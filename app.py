@@ -4,7 +4,7 @@ import requests
 app = Flask(__name__)
 
 VERIFY_TOKEN = "tk_verify_token"  # ต้องตรงกับที่ตั้งค่าใน Facebook Developer
-PAGE_ACCESS_TOKEN = "your_page_access_token"  # ใส่ Page Access Token ของคุณ
+PAGE_ACCESS_TOKEN = "EAAeYCzMe5ZAQBO2uKtnVZCLLkX14JBJgJ901k1dZCc9fSrjyBpfr6rwpp36PV57gAmKixz7nLOa6kfKZCOYjSlwQUf93QCZChVZAL52qzu4bV0vpvDZB7jZBzq2riZBsKSrDPXP5dfYUVjeLgVwldX1ghwzXWwPLjmvdBKGYbjdKQTZBEvj8mB8mb1pkeD9JaG6x3K"  # ใส่ Page Access Token ของคุณ
 
 @app.route('/', methods=['GET'])
 def home():
