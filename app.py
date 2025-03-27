@@ -82,23 +82,24 @@ def send_message(recipient_id, message_text):
 
 # ฟังก์ชันเรียก GPT-4-turbo
 def chat_with_gpt4(user_message):
-    url = "https://api.openai.com/v1/chat/completions"
+    url = "https://api.openai.com/v1/chat/completions"  # ✅ URL ที่ถูกต้อง
     headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # ✅ ดึงจาก Environment Variables
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "gpt-4-turbo",
+        "model": "gpt-4-turbo",  # ถ้าใช้ GPT-4-turbo
         "messages": [{"role": "user", "content": user_message}],
         "temperature": 0.7
     }
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-    except requests.exceptions.RequestException as e:
-        print(f"❌ เรียกใช้ GPT-4 ล้มเหลว: {e}")
-        return "ขออภัย ฉันมีปัญหาในการตอบคำถามของคุณ"
+    response = requests.post(url, headers=headers, json=payload)
+    response_json = response.json()
+    
+    if "choices" in response_json:
+        return response_json["choices"][0]["message"]["content"]
+    else:
+        return "❌ เรียกใช้ GPT-4 ไม่สำเร็จ: " + str(response_json)
+
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
