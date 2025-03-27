@@ -87,11 +87,12 @@ def chat_with_gpt4(user_message):
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # ✅ ดึงจาก Environment Variables
         "Content-Type": "application/json"
     }
-    payload = {
-        "model": "gpt-4-turbo",  # ถ้าใช้ GPT-4-turbo
+        payload = {
+        "model": "gpt-4",  # เปลี่ยนจาก "gpt-4-turbo" เป็น "gpt-4"
         "messages": [{"role": "user", "content": user_message}],
         "temperature": 0.7
     }
+
     response = requests.post(url, headers=headers, json=payload)
     response_json = response.json()
     
