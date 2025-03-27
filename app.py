@@ -92,7 +92,6 @@ def chat_with_gpt4(user_message):
         "messages": [{"role": "user", "content": user_message}],
         "temperature": 0.7
     }
-
     response = requests.post(url, headers=headers, json=payload)
     response_json = response.json()
     
