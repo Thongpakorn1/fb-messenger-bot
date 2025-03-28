@@ -38,6 +38,8 @@ def chat_with_gpt4(user_message):
         "messages": [{"role": "user", "content": user_message}],
         "temperature": 0.7
     }
+    print(f"📡 กำลังส่งคำขอไปยัง GPT-4: {payload}")  # ✅ Debug จุดนี้
+    
     try:
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
