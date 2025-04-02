@@ -28,16 +28,16 @@ def send_message(recipient_id, message_text):
 def chat_with_gpt4(user_message):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
     payload = {
         "model": "gpt-4",
         "messages": [
-            {"role": "system", "content": "คุณคือพนักงานขายที่สุภาพและเชี่ยวชาญด้านเครื่องประดับโบราณ"},
+            {"role": "system", "content": "คุณเป็นพนักงานขายเครื่องประดับโบราณที่สุภาพและเชี่ยวชาญ ตอบคำถามลูกค้าอย่างสุภาพและเป็นมิตร"},
             {"role": "user", "content": user_message}
         ],
-        "temperature": 0.5
+        "temperature": 0.7
     }
     response = requests.post(url, headers=headers, json=payload)
     response_json = response.json()
@@ -45,7 +45,7 @@ def chat_with_gpt4(user_message):
     if "choices" in response_json:
         return response_json["choices"][0]["message"]["content"]
     else:
-        return "❌ ขออภัยค่ะ ระบบไม่สามารถตอบคำถามได้ในขณะนี้"
+        return "❌ ขออภัยค่ะ ฉันไม่สามารถตอบคำถามนี้ได้ในขณะนี้"
 
 # Webhook สำหรับรับข้อความจาก Facebook
 @app.route('/webhook', methods=['POST'])
