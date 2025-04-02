@@ -1,8 +1,21 @@
 from flask import Flask, request
 import requests
 import os
+import json
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
+# ✅ โหลดข้อมูลคำถามที่พบบ่อยจากไฟล์ JSON
+def load_faq():
+    """โหลดข้อมูลคำถามที่พบบ่อยจากไฟล์ predefined_questions.json"""
+    try:
+        with open("predefined_questions.json", "r", encoding="utf-8") as file:
+            return json.load(file)
+    except Exception as e:
+        print(f"❌ ไม่สามารถโหลด FAQ ได้: {e}")
+        return {}
+
+FAQ_DATA = load_faq()  # ✅ โหลดข้อมูลไว้ในตัวแปร
 
 # ใช้ Environment Variables แทนการใส่คีย์ลงในโค้ดโดยตรง
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -26,15 +39,21 @@ def send_message(recipient_id, message_text):
 
 # ฟังก์ชันเรียก GPT-4 เพื่อตอบลูกค้า
 def chat_with_gpt4(user_message):
+    """ตรวจสอบว่าอยู่ใน FAQ หรือไม่"""
+    for question, answer in FAQ_DATA.items():
+        if question in user_message:
+            return answer  # ✅ ตอบจาก FAQ ถ้ามีคำถามอยู่
+
+    # ✅ ถ้าไม่มีใน FAQ ให้เรียก GPT-4
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
         "model": "gpt-4",
         "messages": [
-            {"role": "system", "content": "คุณเป็นพนักงานขายเครื่องประดับโบราณที่สุภาพและเชี่ยวชาญ ตอบคำถามลูกค้าอย่างสุภาพและเป็นมิตร"},
+            {"role": "system", "content": "คุณเป็นพนักงานขายเครื่องประดับโบราณที่สุภาพและเชี่ยวชาญ"},
             {"role": "user", "content": user_message}
         ],
         "temperature": 0.7
@@ -45,7 +64,7 @@ def chat_with_gpt4(user_message):
     if "choices" in response_json:
         return response_json["choices"][0]["message"]["content"]
     else:
-        return "❌ ขออภัยค่ะ ฉันไม่สามารถตอบคำถามนี้ได้ในขณะนี้"
+        return "ขออภัยค่ะ ฉันไม่สามารถตอบคำถามนี้ได้ในขณะนี้"
 
 # Webhook สำหรับรับข้อความจาก Facebook
 @app.route('/webhook', methods=['POST'])
