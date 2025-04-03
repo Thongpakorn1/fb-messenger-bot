@@ -17,7 +17,7 @@ def load_faq():
         print(f"❌ ไม่สามารถโหลด FAQ ได้: {e}")
         return {}
 
-faq_data = load_faq()  # ✅ ใช้ตัวแปร faq_data
+faq_data = load_faq()
 
 # ฟังก์ชันตรวจสอบว่าคำถามอยู่ใน FAQ หรือไม่
 def get_faq_answer(user_message):
@@ -40,7 +40,7 @@ def send_message(recipient_id, message_text):
         "message": {"text": message_text}
     }
     
-    print(f"📤 กำลังส่งข้อความถึง {recipient_id}: {message_text}")  # เพิ่ม log เพื่อตรวจสอบ
+    print(f"📤 กำลังส่งข้อความถึง {recipient_id}: {message_text}")
 
     try:
         response = requests.post(url, headers=headers, params=params, json=data)
@@ -51,7 +51,7 @@ def send_message(recipient_id, message_text):
 
 # ฟังก์ชันส่งข้อความแจ้งเตือนถึงแอดมิน
 def notify_admin(user_message, sender_id):
-    admin_psid = os.getenv("ADMIN_PSID")  # ดึง PSID จาก Environment Variable
+    admin_psid = os.getenv("ADMIN_PSID")
     if not admin_psid:
         print("❌ ADMIN_PSID ไม่ถูกต้องหรือไม่ได้ตั้งค่า!")
         return
