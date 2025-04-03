@@ -11,16 +11,17 @@ def load_faq():
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             faq_data = json.load(file)
+        print("✅ โหลด FAQ สำเร็จ!")
         return faq_data
     except Exception as e:
         print(f"❌ ไม่สามารถโหลด FAQ ได้: {e}")
         return {}
 
-faq_data = load_faq()
+faq_data = load_faq()  # ✅ ใช้ตัวแปร faq_data (ไม่ใช่ FAQ_DATA)
 
 # ฟังก์ชันตรวจสอบว่าคำถามอยู่ใน FAQ หรือไม่
 def get_faq_answer(user_message):
-    for question, answer in FAQ_DATA.items():
+    for question, answer in faq_data.items():  # ✅ เปลี่ยนจาก FAQ_DATA เป็น faq_data
         if question in user_message:
             return answer
     return None  # ถ้าไม่พบคำตอบใน FAQ
@@ -37,6 +38,7 @@ def send_message(recipient_id, message_text):
     try:
         response = requests.post(url, headers=headers, params=params, json=data)
         response.raise_for_status()
+        print(f"✅ ส่งข้อความสำเร็จ: {message_text}")
     except requests.exceptions.RequestException as e:
         print(f"❌ ส่งข้อความล้มเหลว: {e}")
 
@@ -50,6 +52,7 @@ def webhook():
                 sender_id = messaging_event["sender"]["id"]
                 if "message" in messaging_event:
                     user_message = messaging_event["message"].get("text", "").strip()
+                    print(f"📩 ข้อความที่ได้รับ: {user_message}")
 
                     # 🔍 ตรวจสอบว่าอยู่ใน FAQ หรือไม่
                     faq_answer = get_faq_answer(user_message)
