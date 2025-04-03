@@ -7,14 +7,16 @@ app = Flask(__name__)
 
 # โหลด FAQ จากไฟล์ JSON
 def load_faq():
+    file_path = os.path.join(os.path.dirname(__file__), 'predefined_questions.json')
     try:
-        with open("faq.json", "r", encoding="utf-8") as file:
-            return json.load(file)
+        with open(file_path, 'r', encoding='utf-8') as file:
+            faq_data = json.load(file)
+        return faq_data
     except Exception as e:
         print(f"❌ ไม่สามารถโหลด FAQ ได้: {e}")
         return {}
 
-FAQ_DATA = load_faq()
+faq_data = load_faq()
 
 # ฟังก์ชันตรวจสอบว่าคำถามอยู่ใน FAQ หรือไม่
 def get_faq_answer(user_message):
