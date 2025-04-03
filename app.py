@@ -28,6 +28,10 @@ def get_faq_answer(user_message):
 
 # ฟังก์ชันส่งข้อความกลับไปที่ Messenger
 def send_message(recipient_id, message_text):
+    if not recipient_id:
+        print("❌ recipient_id เป็น None! ตรวจสอบค่า ADMIN_PSID")
+        return
+
     url = "https://graph.facebook.com/v18.0/me/messages"
     headers = {"Content-Type": "application/json"}
     params = {"access_token": os.getenv("FB_PAGE_ACCESS_TOKEN")}
@@ -35,6 +39,9 @@ def send_message(recipient_id, message_text):
         "recipient": {"id": recipient_id},
         "message": {"text": message_text}
     }
+    
+    print(f"📤 กำลังส่งข้อความถึง {recipient_id}: {message_text}")  # เพิ่ม log เพื่อตรวจสอบ
+
     try:
         response = requests.post(url, headers=headers, params=params, json=data)
         response.raise_for_status()
@@ -44,10 +51,13 @@ def send_message(recipient_id, message_text):
 
 # ฟังก์ชันส่งข้อความแจ้งเตือนถึงแอดมิน
 def notify_admin(user_message, sender_id):
-    admin_psid = os.getenv("ADMIN_PSID")  # ดึง PSID จากตัวแปรแวดล้อม
-    if admin_psid:
-        message = f"🚨 แจ้งเตือน: ลูกค้าถามคำถามที่ไม่มีในระบบ\n\n❓ คำถาม: {user_message}\n👤 ผู้ใช้: {sender_id}"
-        send_message(admin_psid, message)
+    admin_psid = os.getenv("ADMIN_PSID")  # ดึง PSID จาก Environment Variable
+    if not admin_psid:
+        print("❌ ADMIN_PSID ไม่ถูกต้องหรือไม่ได้ตั้งค่า!")
+        return
+    
+    message = f"🚨 แจ้งเตือน: ลูกค้าถามคำถามที่ไม่มีในระบบ\n\n❓ คำถาม: {user_message}\n👤 ผู้ใช้: {sender_id}"
+    send_message(admin_psid, message)
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
