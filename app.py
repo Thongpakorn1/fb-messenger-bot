@@ -32,7 +32,7 @@ def send_message(recipient_id, message_text):
         print("❌ recipient_id เป็น None! ตรวจสอบค่า ADMIN_PSID")
         return
 
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={FB_PAGE_ACCESS_TOKEN}"
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
     headers = {"Content-Type": "application/json"}
     params = {"access_token": os.getenv("FB_PAGE_ACCESS_TOKEN")}
     data = {
