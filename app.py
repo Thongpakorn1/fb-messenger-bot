@@ -67,7 +67,7 @@ def analyze_image_with_gpt4(image_url):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "gpt-4-vision-preview",
+        "model": "gpt-4o"
         "messages": [
             {
                 "role": "user",
