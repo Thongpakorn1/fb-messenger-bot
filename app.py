@@ -8,7 +8,29 @@ app = Flask(__name__)
 # ✅ กำหนดค่า ACCESS_TOKEN จาก Environment Variable
 ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 
-# โหลด FAQ จากไฟล์ JSON
+# ✅ ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน Telegram
+def notify_admin_telegram(message_text):
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not bot_token or not chat_id:
+        print("❌ Telegram Token หรือ Chat ID ยังไม่ได้ตั้งค่า!")
+        return
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    data = {
+        "chat_id": chat_id,
+        "text": message_text
+    }
+
+    try:
+        response = requests.post(url, data=data)
+        response.raise_for_status()
+        print("✅ แจ้งเตือนผ่าน Telegram สำเร็จ")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ แจ้งเตือน Telegram ล้มเหลว: {e}")
+
+# ✅ โหลด FAQ จากไฟล์ JSON
 def load_faq():
     file_path = os.path.join(os.path.dirname(__file__), 'predefined_questions.json')
     try:
@@ -22,21 +44,21 @@ def load_faq():
 
 faq_data = load_faq()
 
-# ฟังก์ชันตรวจสอบว่าคำถามอยู่ใน FAQ หรือไม่
+# ✅ ฟังก์ชันตรวจสอบว่าคำถามอยู่ใน FAQ หรือไม่
 def get_faq_answer(user_message):
     for question, answer in faq_data.items():
         if question in user_message:
             return answer
-    return None  # ถ้าไม่พบคำตอบใน FAQ
+    return None
 
-# ฟังก์ชันส่งข้อความกลับไปที่ Messenger
+# ✅ ฟังก์ชันส่งข้อความกลับไปที่ Messenger
 def send_message(recipient_id, message_text):
     if not recipient_id:
-        print("❌ recipient_id เป็น None! ตรวจสอบค่า ADMIN_PSID")
+        print("❌ recipient_id เป็น None!")
         return
 
     if not ACCESS_TOKEN:
-        print("❌ ACCESS_TOKEN ยังไม่ได้ตั้งค่า! กรุณาเช็ค Environment Variables.")
+        print("❌ ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
         return
 
     url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
@@ -55,18 +77,12 @@ def send_message(recipient_id, message_text):
     except requests.exceptions.RequestException as e:
         print(f"❌ ส่งข้อความล้มเหลว: {e}")
 
-# ฟังก์ชันส่งข้อความแจ้งเตือนถึงแอดมิน
+# ✅ ฟังก์ชันแจ้งเตือนเมื่อไม่มีคำตอบ
 def notify_admin(user_message, sender_id):
-    admin_psid = os.getenv("ADMIN_PSID")
-    print(f"🔧 ADMIN_PSID ที่ใช้: {admin_psid}")  # เพิ่มบรรทัดนี้
+    message = f"🚨 แจ้งเตือน: ลูกค้าถามคำถามที่ไม่มีในระบบ\n❓ คำถาม: {user_message}\n👤 ผู้ใช้: {sender_id}"
+    notify_admin_telegram(message)
 
-    if not admin_psid:
-        print("❌ ADMIN_PSID ไม่ถูกต้องหรือไม่ได้ตั้งค่า!")
-        return
-
-    message = f"🚨 แจ้งเตือน: ลูกค้าถามคำถามที่ไม่มีในระบบ\n\n❓ คำถาม: {user_message}\n👤 ผู้ใช้: {sender_id}"
-    send_message(admin_psid, message)
-
+# ✅ Webhook สำหรับรับข้อความจาก Facebook
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
@@ -79,7 +95,6 @@ def webhook():
                     user_message = messaging_event["message"].get("text", "").strip()
                     print(f"📩 ข้อความที่ได้รับ: {user_message}")
 
-                    # 🔍 ตรวจสอบว่าอยู่ใน FAQ หรือไม่
                     faq_answer = get_faq_answer(user_message)
 
                     if faq_answer:
@@ -90,5 +105,16 @@ def webhook():
 
     return "Message Received", 200
 
+# ✅ Verify Webhook (หากคุณมีไว้แล้วให้รวมเข้าไป)
+@app.route('/webhook', methods=['GET'])
+def verify_webhook():
+    VERIFY_TOKEN = "tk_verify_token"
+    token_sent = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+    if token_sent == VERIFY_TOKEN:
+        return challenge
+    return "Invalid verification token", 403
+
+# ✅ Run
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=10000, debug=True)
