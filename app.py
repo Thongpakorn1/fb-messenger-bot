@@ -44,6 +44,18 @@ def load_faq():
 
 faq_data = load_faq()
 
+# โหลดสินค้า JSON
+def load_products():
+    try:
+        with open("products.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"❌ โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
+        return []
+
+product_list = load_products()
+print(f"✅ โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
+
 # ✅ ฟังก์ชันตรวจสอบว่าคำถามอยู่ใน FAQ หรือไม่
 def get_faq_answer(user_message):
     for question, answer in faq_data.items():
