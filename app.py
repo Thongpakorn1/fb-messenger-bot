@@ -5,6 +5,9 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
+# ✅ กำหนดค่า ACCESS_TOKEN จาก Environment Variable
+ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
+
 # โหลด FAQ จากไฟล์ JSON
 def load_faq():
     file_path = os.path.join(os.path.dirname(__file__), 'predefined_questions.json')
@@ -32,18 +35,21 @@ def send_message(recipient_id, message_text):
         print("❌ recipient_id เป็น None! ตรวจสอบค่า ADMIN_PSID")
         return
 
+    if not ACCESS_TOKEN:
+        print("❌ ACCESS_TOKEN ยังไม่ได้ตั้งค่า! กรุณาเช็ค Environment Variables.")
+        return
+
     url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
     headers = {"Content-Type": "application/json"}
-    params = {"access_token": os.getenv("FB_PAGE_ACCESS_TOKEN")}
     data = {
         "recipient": {"id": recipient_id},
         "message": {"text": message_text}
     }
-    
+
     print(f"📤 กำลังส่งข้อความถึง {recipient_id}: {message_text}")
 
     try:
-        response = requests.post(url, headers=headers, params=params, json=data)
+        response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         print(f"✅ ส่งข้อความสำเร็จ: {message_text}")
     except requests.exceptions.RequestException as e:
@@ -55,7 +61,7 @@ def notify_admin(user_message, sender_id):
     if not admin_psid:
         print("❌ ADMIN_PSID ไม่ถูกต้องหรือไม่ได้ตั้งค่า!")
         return
-    
+
     message = f"🚨 แจ้งเตือน: ลูกค้าถามคำถามที่ไม่มีในระบบ\n\n❓ คำถาม: {user_message}\n👤 ผู้ใช้: {sender_id}"
     send_message(admin_psid, message)
 
@@ -78,9 +84,9 @@ def webhook():
                         send_message(sender_id, faq_answer)
                     else:
                         send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
-                        notify_admin(user_message, sender_id)  # แจ้งเตือนแอดมิน
+                        notify_admin(user_message, sender_id)
 
-    return "Message Received", 200  # ✅ อยู่ใน webhook()
+    return "Message Received", 200
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=10000, debug=True)
