@@ -59,33 +59,49 @@ def send_message(recipient_id, message_text):
 
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
-        print("\u274c ไม่มี OPENAI_API_KEY")
+        print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
+
+    # 🟢 สร้างข้อความที่รวมสินค้าไว้ทั้งหมด
+    product_descriptions = "\n".join([
+        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
+        for item in product_list
+    ])
+
+    prompt_text = f"""คุณคือนักวิเคราะห์ภาพสินค้าโบราณ 
+จากภาพด้านล่าง ช่วยเปรียบเทียบกับรายการสินค้าที่มีอยู่ในระบบ แล้วบอกว่าใกล้เคียงกับรายการใดมากที่สุด พร้อมแจ้งขนาด น้ำหนัก และราคา:
+
+รายการสินค้า:
+{product_descriptions}
+"""
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
+
     payload = {
         "model": "gpt-4o",
         "messages": [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "จากภาพนี้ สินค้าชิ้นนี้ตรงกับรายการไหนใน products.json"},
+                    {"type": "text", "text": prompt_text},
                     {"type": "image_url", "image_url": {"url": image_url}}
                 ]
             }
         ],
-        "max_tokens": 300
+        "max_tokens": 500
     }
+
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        print("\u274c GPT Vision ล้มเหลว:", e)
+        print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
+
 
 # ตอบ FAQ
 
