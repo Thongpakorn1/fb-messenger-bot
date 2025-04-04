@@ -1,26 +1,26 @@
 [
   {
     "id": "A001",
-    "ชื่อ": "แหวนพญาครุฑล้อมทับทิม",
-    "ขนาด": "59",
-    "น้ำหนัก": "13.33 กรัม",
-    "ราคา": "49,500 บาท",
-    "ภาพ": "https://www.thaiantiquethongboran.com/product/198869-205082/..."
+    "name": "แหวนพญาครุฑล้อมทับทิม",
+    "size": "59",
+    "weight": "13.33 กรัม",
+    "price": "49,500 บาท",
+    "image": "https://www.thaiantiquethongboran.com/product/198869-205082/..."
   },
   {
     "id": "A002",
-    "ชื่อ": "แหวนสลักรูปวัวทองคำ",
-    "ขนาด": "62",
-    "น้ำหนัก": "14.27 กรัม",
-    "ราคา": "45,000 บาท",
-    "ภาพ": "https://www.thaiantiquethongboran.com/product/198760-204877/..."
+    "name": "แหวนสลักรูปวัวทองคำ",
+    "size": "62",
+    "weight": "14.27 กรัม",
+    "price": "45,000 บาท",
+    "image": "https://www.thaiantiquethongboran.com/product/198760-204877/..."
   },
   {
     "id": "A003",
-    "ชื่อ": "แหวนสลักลายไทย",
-    "ขนาด": "64",
-    "น้ำหนัก": "8.37 กรัม",
-    "ราคา": "27,500 บาท",
-    "ภาพ": "https://www.thaiantiquethongboran.com/product/198708-204751/..."
+    "name": "แหวนสลักลายไทย",
+    "size": "64",
+    "weight": "8.37 กรัม",
+    "price": "27,500 บาท",
+    "image": "https://www.thaiantiquethongboran.com/product/198708-204751/..."
   }
 ]
