@@ -137,7 +137,12 @@ def webhook():
                                 image_url = attachment["payload"]["url"]
                                 print(f"\U0001f5bc\ufe0f ลูกค้าส่งภาพ: {image_url}")
                                 vision_reply = analyze_image_with_gpt4(image_url)
-                                send_message(sender_id, vision_reply)
+                                
+                                # ตรวจสอบผลการตอบกลับ
+                                if vision_reply:
+                                    send_message(sender_id, vision_reply)
+                                else:
+                                    send_message(sender_id, "ขอโทษค่ะ ระบบไม่สามารถตรวจสอบภาพได้ในขณะนี้")
                                 return "Message Received", 200
 
                     # ข้อความข้อความ
