@@ -9,7 +9,6 @@ ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # โหลด FAQ
-
 def load_faq():
     try:
         with open("predefined_questions.json", "r", encoding="utf-8") as f:
@@ -21,7 +20,6 @@ def load_faq():
 faq_data = load_faq()
 
 # โหลดสินค้า
-
 def load_products():
     try:
         with open("products.json", "r", encoding="utf-8") as f:
@@ -34,7 +32,6 @@ product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
 # จัดรูปแบบข้อความสินค้าสำหรับตอบกลับ
-
 def format_product_reply(product):
     return (
         f"ชื่อสินค้า: {product['name']}\n"
@@ -44,7 +41,6 @@ def format_product_reply(product):
     )
 
 # ส่งข้อความกลับ Messenger
-
 def send_message(recipient_id, message_text):
     if not recipient_id:
         print("\u274c recipient_id เป็น None!")
@@ -69,7 +65,6 @@ def send_message(recipient_id, message_text):
         print(f"\u274c ส่งข้อความล้มเหลว: {e}")
 
 # วิเคราะห์ภาพด้วย GPT-4 Vision
-
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
@@ -119,7 +114,6 @@ def analyze_image_with_gpt4(image_url):
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ตอบ FAQ
-
 def get_faq_answer(user_message):
     for question, answer in faq_data.items():
         if question in user_message:
@@ -127,7 +121,6 @@ def get_faq_answer(user_message):
     return None
 
 # Webhook
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
