@@ -150,7 +150,7 @@ def webhook():
 
                     # ข้อความข้อความ
                     user_message = messaging_event["message"].get("text", "").strip()
-                    print(f"\ud83d\udce9 ข้อความที่ได้รับ: {user_message}")
+                    print(f"ข้อความที่ได้รับ: {user_message}")
 
                     faq_answer = get_faq_answer(user_message)
                     if faq_answer:
