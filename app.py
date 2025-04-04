@@ -58,6 +58,8 @@ def send_message(recipient_id, message_text):
 # ฟังก์ชันส่งข้อความแจ้งเตือนถึงแอดมิน
 def notify_admin(user_message, sender_id):
     admin_psid = os.getenv("ADMIN_PSID")
+    print(f"🔧 ADMIN_PSID ที่ใช้: {admin_psid}")  # เพิ่มบรรทัดนี้
+
     if not admin_psid:
         print("❌ ADMIN_PSID ไม่ถูกต้องหรือไม่ได้ตั้งค่า!")
         return
