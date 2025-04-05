@@ -1,15 +1,17 @@
 import json
 import os
 import requests
+import base64
+import requests
 from flask import Flask, request
-
+from io import BytesIO
+from PIL import Image
 app = Flask(__name__)
 
 ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # โหลด FAQ
-
 def load_faq():
     try:
         with open("predefined_questions.json", "r", encoding="utf-8") as f:
@@ -21,7 +23,6 @@ def load_faq():
 faq_data = load_faq()
 
 # โหลดสินค้า
-
 def load_products():
     try:
         with open("products.json", "r", encoding="utf-8") as f:
@@ -34,7 +35,6 @@ product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
 # จัดรูปแบบข้อความสินค้าสำหรับตอบกลับ
-
 def format_product_reply(product):
     return (
         f"ชื่อสินค้า: {product['name']}\n"
@@ -44,7 +44,6 @@ def format_product_reply(product):
     )
 
 # ส่งข้อความกลับ Messenger
-
 def send_message(recipient_id, message_text):
     if not recipient_id:
         print("\u274c recipient_id เป็น None!")
@@ -68,23 +67,37 @@ def send_message(recipient_id, message_text):
     except requests.exceptions.RequestException as e:
         print(f"\u274c ส่งข้อความล้มเหลว: {e}")
 
-# วิเคราะห์ภาพด้วย GPT-4 Vision
+# ฟังก์ชันดาวน์โหลดภาพจาก URL และแปลงเป็น base64
+def image_to_base64(image_url):
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # ตรวจสอบสถานะการดาวน์โหลด
+        image = Image.open(BytesIO(response.content))  # เปิดภาพจาก BytesIO
+        buffered = BytesIO()
+        image.save(buffered, format="PNG")  # แปลงเป็น PNG หรือไฟล์ประเภทอื่น
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return img_str
+    except Exception as e:
+        print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL หรือแปลงเป็น base64: {e}")
+        return None
 
+# ฟังก์ชันการใช้ GPT-4 วิเคราะห์ภาพ
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
-        
- # สร้างคำอธิบายของสินค้าทั้งหมดในฐานข้อมูล
-    product_descriptions = "\n".join([
-        f"{item['id']} - {item['name']} - ขนาด: {item.get('size', 'ไม่ระบุ')} - น้ำหนัก: {item.get('weight', 'ไม่ระบุ')} - ราคา: {item['price']}"
-        for item in product_list
-    ])
 
-    # ปรับปรุง prompt ให้ GPT สามารถให้ข้อมูลครบถ้วน
+    # แปลงภาพเป็น base64
+    img_base64 = image_to_base64(image_url)
+    if not img_base64:
+        return "ขอโทษค่ะ ไม่สามารถดาวน์โหลดภาพจาก URL ที่ให้มาได้"
+
+    # สร้าง prompt เพื่อให้ GPT-4 วิเคราะห์ภาพ
+    product_descriptions = "\n".join([f"{item['id']} - {item['name']} - {item['price']}" for item in product_list])
+    
     prompt_text = f"""
-    ลูกค้าส่งภาพสินค้ามา กรุณาวิเคราะห์ภาพนี้และเปรียบเทียบกับสินค้าด้านล่าง โดยระบุสินค้าที่ตรงหรือใกล้เคียงที่สุดในระบบที่คุณเห็น:
-
+    ลูกค้าส่งภาพสินค้ามา กรุณาช่วยดูภาพนี้และเปรียบเทียบกับสินค้าทั้งหมดที่มีในระบบ โดยพิจารณาว่าภาพที่ลูกค้าส่งมานั้นเหมือนกับสินค้าชิ้นไหนในรายการสินค้าด้านล่างนี้:
+    
     รายการสินค้า:
     {product_descriptions}
 
@@ -92,7 +105,7 @@ def analyze_image_with_gpt4(image_url):
     ชื่อสินค้า: ...
     ขนาด: ...
     น้ำหนัก: ...
-    ราคา: ...ค่ะ
+    ราคา: ...
     """
 
     headers = {
@@ -101,7 +114,7 @@ def analyze_image_with_gpt4(image_url):
     }
 
     payload = {
-        "model": "gpt-4o",  # ใช้ GPT-4o
+        "model": "gpt-4",  # ใช้ GPT-4
         "messages": [
             {
                 "role": "user",
@@ -109,7 +122,7 @@ def analyze_image_with_gpt4(image_url):
             },
             {
                 "role": "user",
-                "content": image_url  # ส่ง URL ของภาพที่ลูกค้าส่ง
+                "content": img_base64  # ส่ง base64 ของภาพไปให้ GPT-4 วิเคราะห์
             }
         ],
         "max_tokens": 500
@@ -126,7 +139,6 @@ def analyze_image_with_gpt4(image_url):
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ตอบ FAQ
-
 def get_faq_answer(user_message):
     for question, answer in faq_data.items():
         if question in user_message:
@@ -134,7 +146,6 @@ def get_faq_answer(user_message):
     return None
 
 # Webhook
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
