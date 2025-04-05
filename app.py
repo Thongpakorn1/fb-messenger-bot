@@ -197,34 +197,40 @@ def get_faq_answer(user_message):
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
+    try:
+        data = request.get_json()
+        if data.get("object") == "page":
+            for entry in data.get("entry", []):
+                for messaging_event in entry.get("messaging", []):
+                    sender_id = messaging_event["sender"]["id"]
+                    if "message" in messaging_event:
+                        # กรณีมีรูปภาพ
+                        if "attachments" in messaging_event["message"]:
+                            for attachment in messaging_event["message"]["attachments"]:
+                                if attachment["type"] == "image":
+                                    image_url = attachment["payload"]["url"]
+                                    print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+                                    vision_reply = analyze_image_with_gpt4(image_url)
+                                    send_message(sender_id, vision_reply)
+                                    return "Message Received", 200
 
-    if data.get("object") == "page":
-        for entry in data.get("entry", []):
-            for messaging_event in entry.get("messaging", []):
-                sender_id = messaging_event["sender"]["id"]
-                if "message" in messaging_event:
-                    # กรณีมีรูปภาพ
-                    if "attachments" in messaging_event["message"]:
-                        for attachment in messaging_event["message"]["attachments"]:
-                            if attachment["type"] == "image":
-                                image_url = attachment["payload"]["url"]
-                                print(f"\U0001f5bc\ufe0f ลูกค้าส่งภาพ: {image_url}")
-                                vision_reply = analyze_image_with_gpt4(image_url)
-                                send_message(sender_id, vision_reply)
-                                return "Message Received", 200
+                        # ข้อความข้อความ
+                        user_message = messaging_event["message"].get("text", "").strip()
+                        print(f"ข้อความที่ได้รับ: {user_message}")
 
-                    # ข้อความข้อความ
-                    user_message = messaging_event["message"].get("text", "").strip()
-                    print(f"ข้อความที่ได้รับ: {user_message}")
+                        faq_answer = get_faq_answer(user_message)
+                        if faq_answer:
+                            send_message(sender_id, faq_answer)
+                        else:
+                            send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
 
-                    faq_answer = get_faq_answer(user_message)
-                    if faq_answer:
-                        send_message(sender_id, faq_answer)
-                    else:
-                        send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
+        return "Message Received", 200
 
-    return "Message Received", 200
+    except Exception as e:
+        print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
+        # แจ้งเตือนข้อผิดพลาดไปที่ Telegram
+        send_telegram_notification(f"❌ ข้อผิดพลาดในการประมวลผล webhook: {e}")
+        return "Error", 500
 
 @app.route("/", methods=["GET"])
 def home():
@@ -232,3 +238,4 @@ def home():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=10000, debug=True)
+
