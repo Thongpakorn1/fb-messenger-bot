@@ -2,8 +2,7 @@ import json
 import os
 import requests
 import base64
-import cv2
-import numpy as np
+import imagehash
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
@@ -65,7 +64,7 @@ def image_to_base64(image_url):
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return img_str
 
-# ฟังก์ชันเปรียบเทียบรูปภาพด้วย OpenCV
+# ฟังก์ชันเปรียบเทียบภาพโดยใช้ ImageHash
 def compare_images(image_url, product_image_url):
     # ดาวน์โหลดภาพจาก URL
     img1 = download_image(image_url)  # ภาพจาก URL ของสินค้าจากเว็บไซต์
@@ -74,23 +73,12 @@ def compare_images(image_url, product_image_url):
     if img1 is None or img2 is None:
         return None
 
-    # แปลงภาพเป็น grayscale
-    img1_gray = cv2.cvtColor(np.array(img1), cv2.COLOR_RGB2GRAY)
-    img2_gray = cv2.cvtColor(np.array(img2), cv2.COLOR_RGB2GRAY)
+    # คำนวณแฮชของภาพ
+    hash1 = imagehash.average_hash(img1)
+    hash2 = imagehash.average_hash(img2)
 
-    # ใช้ ORB (Oriented FAST and Rotated BRIEF) ในการหา keypoints และ descriptors
-    orb = cv2.ORB_create()
-    kp1, des1 = orb.detectAndCompute(img1_gray, None)
-    kp2, des2 = orb.detectAndCompute(img2_gray, None)
-
-    # ใช้ BFMatcher ในการจับคู่ descriptors
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    matches = bf.match(des1, des2)
-    
-    # เรียงลำดับการจับคู่จากน้อยไปมาก
-    matches = sorted(matches, key=lambda x: x.distance)
-
-    return len(matches)  # จำนวนการจับคู่ที่พบ
+    # คำนวณความแตกต่างระหว่างแฮช
+    return hash1 - hash2  # คืนค่าความแตกต่างของแฮช
 
 # ฟังก์ชันการใช้ GPT-4 Vision วิเคราะห์ภาพ
 def analyze_image_with_gpt4(image_url):
@@ -219,7 +207,7 @@ def webhook():
                                 
                                 # เปรียบเทียบภาพที่ลูกค้าส่งมาว่าเป็นสินค้าชิ้นไหน
                                 for product in product_list:
-                                    if compare_images(image_url, product['image']) > 30:  # เปรียบเทียบกับสินค้าบนเว็บไซต์
+                                    if compare_images(image_url, product['image']) < 5:  # เปรียบเทียบกับสินค้าบนเว็บไซต์
                                         vision_reply = format_product_reply(product)  # จัดรูปแบบข้อมูลสินค้า
                                         send_message(sender_id, vision_reply)  # ส่งข้อความตอบกลับไปยังลูกค้า
                                         return "Message Received", 200
