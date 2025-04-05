@@ -6,6 +6,8 @@
     "weight": "13.33 กรัม",
     "price": "49,500 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198869-205082/..."
+    "product_code": "0000000001",
+    "era": "ศิลปะน่าจะประมาณช่วงอยุธยาค่ะ"
   },
   {
     "id": "A002",
@@ -14,6 +16,8 @@
     "weight": "14.27 กรัม",
     "price": "45,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198760-204877/..."
+    "product_code": "0000000002",
+    "era": "ศิลปะน่าจะประมาณช่วงอยุธยาค่ะ"
   },
   {
     "id": "A003",
@@ -22,6 +26,8 @@
     "weight": "8.37 กรัม",
     "price": "27,500 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198708-204751/..."
+    "product_code": "0000000003",
+    "era": "วงนี้เป็นของเก่าแต่ว่าไม่ทราบยุคค่ะพี่"
   },
   {
     "id": "A004",
@@ -30,6 +36,8 @@
     "weight": "5.12 กรัม",
     "price": "16,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198897-205117/..."
+    "product_code": "0000000004",
+    "era": "วงนี้เป็นของเก่าแต่ว่าไม่ทราบยุคค่ะพี่"
   },
   {
     "id": "A005",
@@ -38,6 +46,8 @@
     "weight": "6.27 กรัม",
     "price": "16,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198898-205118/..."
+    "product_code": "0000000005",
+    "era": "วงนี้เป็นของเก่าแต่ว่าไม่ทราบยุคค่ะพี่"
   },
   {
     "id": "A006",
@@ -46,6 +56,8 @@
     "weight": "7.18 กรัม",
     "price": "16,500 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198899-205119/..."
+    "product_code": "0000000006",
+    "era": "วงนี้เป็นของเก่าแต่ว่าไม่ทราบยุคค่ะพี่"
   },
   {
     "id": "A007",
@@ -54,6 +66,8 @@
     "weight": "6.43 กรัม",
     "price": "16,500 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198900-205120/..."
+    "product_code": "0000000007",
+    "era": "วงนี้เป็นของเก่าแต่ว่าไม่ทราบยุคค่ะพี่"
   },
   {
     "id": "A008",
@@ -62,6 +76,8 @@
     "weight": "29.98 กรัม",
     "price": "95,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198734-204810/..."
+    "product_code": "0000000008",
+    "era": "ศิลปะน่าจะประมาณยุคอยุธยาค่ะ"
   },
   {
     "id": "A009",
@@ -70,6 +86,8 @@
     "weight": "14.27 กรัม",
     "price": "46,500 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198755-204859/..."
+    "product_code": "0000000009",
+    "era": "ศิลปะน่าจะประมาณยุคอยุธยาค่ะ"
   },
   {
     "id": "A010",
@@ -78,6 +96,8 @@
     "weight": "12.71 กรัม",
     "price": "38,500 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198613-204611/..."
+    "product_code": "0000000010",
+    "era": "ชิ้นนี้เป็นของเก่าแต่ว่าไม่ทราบยุคค่ะ"
   },
   {
     "id": "A011",
@@ -86,6 +106,8 @@
     "weight": "120.40 กรัม",
     "price": "295,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/197441-202724/..."
+    "product_code": "0000000011",
+    "era": "ศิลปะน่าจะประมาณยุคอยุธยาค่ะ"
   },
   {
     "id": "A012",
@@ -94,6 +116,8 @@
     "weight": "111.26 กรัม",
     "price": "335,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/198296-204100/..."
+    "product_code": "0000000012",
+    "era": "ศิลปะน่าจะประมาณยุคต้นรัตนะค่ะ"
   },
   {
     "id": "A013",
@@ -102,5 +126,7 @@
     "weight": "115.57 กรัม",
     "price": "379,000 บาทค่ะ",
     "image": "https://www.thaiantiquethongboran.com/product/199034-205362/..."
+    "product_code": "0000000009",
+    "era": "ศิลปะน่าจะประมาณยุคอยุธยาค่ะ"
   }
 ]
