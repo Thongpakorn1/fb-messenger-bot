@@ -2,102 +2,49 @@ import json
 import os
 import requests
 from flask import Flask, request
-from io import BytesIO
-from PIL import Image
 
 app = Flask(__name__)
 
-# ตั้งค่า Telegram Bot Token และ Chat ID
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # ใส่ Bot Token ของคุณ
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # ใส่ Chat ID ของคุณ
 ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# โหลด FAQ
+
+def load_faq():
+    try:
+        with open("predefined_questions.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"\u274c ไม่สามารถโหลด FAQ ได้: {e}")
+        return {}
+
+faq_data = load_faq()
+
 # โหลดสินค้า
+
 def load_products():
     try:
         with open("products.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"❌ โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
+        print(f"\u274c โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
         return []
 
-# โหลดสินค้าทั้งหมด
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
-# ฟังก์ชันการใช้ GPT-4 วิเคราะห์ภาพ
-def analyze_image_with_gpt4(image_url):
-    if not OPENAI_API_KEY:
-        print("❌ ไม่มี OPENAI_API_KEY")
-        return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
+# จัดรูปแบบข้อความสินค้าสำหรับตอบกลับ
 
-    # สร้าง prompt ให้ GPT วิเคราะห์ภาพ
-    product_descriptions = "\n".join([f"{item['id']} - {item['name']} - {item['price']}" for item in product_list])
-    
-    prompt_text = f"""
-    ลูกค้าส่งภาพมาทางเพจกรุณาช่วยดูภาพนี้และเปรียบเทียบกับสินค้าทั้งหมดที่มีในระบบ โดยพิจารณาว่าภาพที่ลูกค้าส่งมานั้นเหมือนกับสินค้าชิ้นไหนในรายการสินค้าด้านล่างนี้:
-    
-    รายการสินค้า:
-    {product_descriptions}
-    
-    กรุณาตอบกลับในรูปแบบนี้:
-    ชื่อสินค้า: ...
-    ขนาด: ...
-    น้ำหนัก: ...
-    ราคา: ...
-    """
-
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "gpt-4",  # ใช้ GPT-4
-        "messages": [
-            {
-                "role": "user",
-                "content": prompt_text
-            },
-            {
-                "role": "user",
-                "content": image_url  # ส่ง URL ของภาพที่ลูกค้าส่ง
-            }
-        ],
-        "max_tokens": 500
-    }
-
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()["choices"][0]["message"]["content"]
-        print(f"✅ คำตอบจาก GPT-4: {result}")
-        return result
-    except Exception as e:
-        print(f"❌ GPT-4 ล้มเหลว: {e}")
-        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
-
-# ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
-def send_telegram_notification(message):
-    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message
-    }
-    try:
-        response = requests.post(telegram_url, data=payload)
-        response.raise_for_status()
-        print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
-
-# ฟังก์ชันในการตอบคำถาม FAQ
-def get_faq_answer(user_message):
-    # เพิ่มฟังก์ชันการตอบคำถาม FAQ ที่ต้องการให้ GPT ตอบ
-    pass
+def format_product_reply(product):
+    return (
+        f"ชื่อสินค้า: {product['name']}\n"
+        f"ขนาด: {product['size']}\n"
+        f"น้ำหนัก: {product['weight']}\n"
+        f"ราคา: {product['price']}"
+    )
 
 # ส่งข้อความกลับ Messenger
+
 def send_message(recipient_id, message_text):
     if not recipient_id:
         print("\u274c recipient_id เป็น None!")
@@ -121,7 +68,66 @@ def send_message(recipient_id, message_text):
     except requests.exceptions.RequestException as e:
         print(f"\u274c ส่งข้อความล้มเหลว: {e}")
 
+# วิเคราะห์ภาพด้วย GPT-4 Vision
+
+def analyze_image_with_gpt4(image_url):
+    if not OPENAI_API_KEY:
+        print("❌ ไม่มี OPENAI_API_KEY")
+        return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
+
+    product_descriptions = "\n".join([
+        f"{item['id']} - {item['name']} - {item['price']}"
+        for item in product_list
+    ])
+
+    prompt_text = f"""ภาพที่แนบมาคือภาพสินค้าจากลูกค้า กรุณาดูภาพแล้วเลือกสินค้าที่ตรงหรือใกล้เคียงที่สุดจากรายการด้านล่าง พร้อมตอบกลับเป็น:
+
+ชื่อสินค้า: ...
+ขนาด: ...
+น้ำหนัก: ...
+ราคา: ...ค่ะ
+
+รายการสินค้า:
+{product_descriptions}
+"""
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+            }
+        ],
+        "max_tokens": 500
+    }
+
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("❌ GPT Vision ล้มเหลว:", e)
+        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
+
+# ตอบ FAQ
+
+def get_faq_answer(user_message):
+    for question, answer in faq_data.items():
+        if question in user_message:
+            return answer
+    return None
+
 # Webhook
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -136,16 +142,9 @@ def webhook():
                         for attachment in messaging_event["message"]["attachments"]:
                             if attachment["type"] == "image":
                                 image_url = attachment["payload"]["url"]
-                                print(f"📷 ลูกค้าส่งภาพ: {image_url}")
-                                
-                                # วิเคราะห์ภาพด้วย GPT
-                                vision_reply = analyze_image_with_gpt4(image_url)  # วิเคราะห์ภาพด้วย GPT-4
-                                
-                                if vision_reply:
-                                    send_message(sender_id, vision_reply)  # ส่งข้อความตอบกลับไปยังลูกค้า
-                                else:
-                                    send_message(sender_id, "ขอโทษค่ะ ระบบไม่สามารถตรวจสอบภาพได้ในขณะนี้")
-                                    send_telegram_notification(f"ลูกค้า {sender_id} ส่งภาพที่ไม่สามารถวิเคราะห์ได้")  # แจ้งเตือนไปยัง Telegram
+                                print(f"\U0001f5bc\ufe0f ลูกค้าส่งภาพ: {image_url}")
+                                vision_reply = analyze_image_with_gpt4(image_url)
+                                send_message(sender_id, vision_reply)
                                 return "Message Received", 200
 
                     # ข้อความข้อความ
