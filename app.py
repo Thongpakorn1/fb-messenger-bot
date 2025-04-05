@@ -93,58 +93,40 @@ def analyze_image_with_gpt4(image_url):
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-    # แปลงภาพเป็น base64
     img_base64 = image_to_base64(image_url)
     if not img_base64:
         return "ขอโทษค่ะ ไม่สามารถดาวน์โหลดภาพจาก URL ที่ให้มาได้"
 
-    # สร้าง prompt เพื่อให้ GPT-4 วิเคราะห์ภาพ
+    # Prompt text ของ GPT
     product_descriptions = "\n".join([f"{item['id']} - {item['name']} - {item['price']}" for item in product_list])
-    
-    prompt_text = f"""
-    ลูกค้าส่งภาพสินค้ามา กรุณาช่วยดูภาพนี้และเปรียบเทียบกับสินค้าทั้งหมดที่มีในระบบ โดยพิจารณาว่าภาพที่ลูกค้าส่งมานั้นเหมือนกับสินค้าชิ้นไหนในรายการสินค้าด้านล่างนี้:
-    
-    รายการสินค้า:
+    prompt_text = f"""คำถามเกี่ยวกับสินค้า:
     {product_descriptions}
-
-    กรุณาตอบกลับในรูปแบบนี้:
-    ชื่อสินค้า: ...
-    ขนาด: ...
-    น้ำหนัก: ...
-    ราคา: ...
-    """
-
+    กรุณาตอบคำถามตามที่เห็นในภาพ."""
+    
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "gpt-4",  # ใช้ GPT-4
+        "model": "gpt-4",
         "messages": [
-            {
-                "role": "user",
-                "content": prompt_text
-            },
-            {
-                "role": "user",
-                "content": img_base64  # ส่ง base64 ของภาพไปให้ GPT-4 วิเคราะห์
-            }
+            {"role": "user", "content": prompt_text},
+            {"role": "user", "content": img_base64}
         ],
         "max_tokens": 500
     }
 
     try:
-        # เพิ่มการหน่วงเวลา 1 วินาทีระหว่างการส่งคำขอ
-        time.sleep(1)
-
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()["choices"][0]["message"]["content"]
-        print(f"✅ คำตอบจาก GPT-4: {result}")
+        if "ไม่พบข้อมูล" in result:  # ตรวจสอบคำตอบจาก GPT ว่ามีข้อความว่าไม่พบข้อมูลหรือไม่
+            send_telegram_notification("❌ ระบบไม่พบข้อมูลสินค้าที่ตรงจากภาพที่ลูกค้าส่งมา.")
         return result
     except requests.exceptions.RequestException as e:
         print(f"❌ GPT-4 ล้มเหลว: {e}")
+        send_telegram_notification(f"❌ GPT-4 ล้มเหลวในการวิเคราะห์ภาพ: {image_url}")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
@@ -155,6 +137,7 @@ def send_telegram_notification(message):
         "text": message
     }
     try:
+        print("⏳ กำลังส่งข้อความไปยัง Telegram...")
         response = requests.post(telegram_url, data=payload)
         response.raise_for_status()
         print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
