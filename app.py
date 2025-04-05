@@ -5,7 +5,7 @@ import base64
 import imagehash
 from flask import Flask, request
 from io import BytesIO
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 app = Flask(__name__)
 
@@ -48,6 +48,9 @@ def download_image(image_url):
         return img
     except requests.exceptions.RequestException as e:
         print(f"❌ การดาวน์โหลดภาพล้มเหลว: {e}")
+        return None
+    except UnidentifiedImageError as e:
+        print(f"❌ ไม่สามารถระบุประเภทของภาพจาก URL: {e}")
         return None
 
 # ฟังก์ชันแปลงภาพเป็น base64
@@ -144,7 +147,7 @@ def send_telegram_notification(message):
         response.raise_for_status()
         print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
     except requests.exceptions.RequestException as e:
-        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
+        print(f"❌ ส่งข้อความแจ้งเตือนทาง Telegram ล้มเหลว: {e}")
 
 # ฟังก์ชันในการตอบคำถาม FAQ
 def get_faq_answer(user_message):
