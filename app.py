@@ -184,6 +184,9 @@ def send_telegram_notification(message):
     except requests.exceptions.RequestException as e:
         print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
 
+# สถานะการส่งแจ้งเตือน Telegram
+sent_notification = False  # ตัวแปรเก็บสถานะการส่งข้อความไปยัง Telegram
+
 # ฟังก์ชันในการตอบคำถาม FAQ
 def get_faq_answer(user_message):
     for question, answer in faq_data.items():
@@ -221,6 +224,9 @@ def send_message(recipient_id, message_text):
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    global sent_notification  # ใช้ตัวแปร global เพื่อให้สามารถเปลี่ยนค่าได้
+
+    data = request.get_json()
     try:
         data = request.get_json()
         if data.get("object") == "page":
@@ -247,6 +253,10 @@ def webhook():
                             send_message(sender_id, faq_answer)
                         else:
                             send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
+                            # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
+                        if not sent_notification:
+                            send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
+                            sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
 
         return "Message Received", 200
 
