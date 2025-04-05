@@ -84,17 +84,6 @@ def analyze_image_with_gpt4(image_url):
         send_telegram_notification("❌ ระบบไม่สามารถวิเคราะห์ภาพได้หรือไม่พบข้อมูลสินค้าที่ตรง")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
-# จัดรูปแบบข้อความสินค้าสำหรับตอบกลับ
-def format_product_reply(product):
-    size = product.get('size', 'ไม่ระบุ')  # ถ้าไม่มีข้อมูลให้แสดงว่า 'ไม่ระบุ'
-    weight = product.get('weight', 'ไม่ระบุ')  # ถ้าไม่มีข้อมูลให้แสดงว่า 'ไม่ระบุ'
-    return (
-        f"ชื่อสินค้า: {product['name']}\n"
-        f"ขนาด: {size}\n"
-        f"น้ำหนัก: {weight}\n"
-        f"ราคา: {product['price']}"
-    )
-
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -108,6 +97,13 @@ def send_telegram_notification(message):
         print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
     except requests.exceptions.RequestException as e:
         print(f"❌ ส่งข้อความแจ้งเตือนทาง Telegram ล้มเหลว: {e}")
+
+# ฟังก์ชันในการตอบคำถาม FAQ
+def get_faq_answer(user_message):
+    for question, answer in faq_data.items():
+        if question in user_message:
+            return answer
+    return None  # ถ้าไม่พบคำตอบจาก FAQ
 
 # ส่งข้อความกลับ Messenger
 def send_message(recipient_id, message_text):
