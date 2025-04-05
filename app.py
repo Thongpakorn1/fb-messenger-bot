@@ -37,11 +37,16 @@ def load_products():
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
-# จัดรูปแบบข้อความสินค้าสำหรับตอบกลับ โดยใช้ลิงก์สินค้าแทนรายละเอียดราคา
-def format_product_reply(product):
-    # เพิ่มการส่งลิงก์ของสินค้าแทนราคา
-    product_link = product.get('url', 'ไม่มีลิงก์')  # ใช้ `url` จาก products.json หรือค่าที่กำหนด
+# เปรียบเทียบ URL ของภาพ
+def compare_image_url(image_url):
+    for product in product_list:
+        if image_url == product['image']:  # เปรียบเทียบ URL ของภาพ
+            return product
+    return None  # ถ้าไม่พบสินค้าที่ตรงกัน
 
+# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า (ขนาด, น้ำหนัก, ราคา)
+def format_product_reply(product):
+    product_link = product.get('url', 'ไม่มีลิงก์')
     return (
         f"ชื่อสินค้า: {product['name']}\n"
         f"ขนาด: {product.get('size', 'ไม่ระบุ')}\n"
@@ -49,29 +54,24 @@ def format_product_reply(product):
         f"รายละเอียดสินค้า: {product_link}"
     )
 
-# ส่งข้อความกลับ Messenger
-def send_message(recipient_id, message_text):
-    if not recipient_id:
-        print("\u274c recipient_id เป็น None!")
-        return
+# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
+def format_era_reply(product):
+    era = product.get('era', 'ไม่ระบุยุคสมัย')
+    return f"ยุคสมัย: {era}"
 
-    if not ACCESS_TOKEN:
-        print("\u274c ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
-        return
-
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
+# ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
+def send_telegram_notification(message):
+    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
     }
-
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(telegram_url, data=payload)
         response.raise_for_status()
-        print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
+        print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
     except requests.exceptions.RequestException as e:
-        print(f"\u274c ส่งข้อความล้มเหลว: {e}")
+        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
 
 # ฟังก์ชันดาวน์โหลดภาพจาก URL และแปลงเป็น base64
 def image_to_base64(image_url):
