@@ -194,6 +194,30 @@ def get_faq_answer(user_message):
     send_telegram_notification(f"❌ ไม่พบคำตอบสำหรับคำถาม: {user_message}")
     return None  # ถ้าไม่พบคำตอบจาก FAQ
 
+# ส่งข้อความกลับ Messenger
+def send_message(recipient_id, message_text):
+    if not recipient_id:
+        print("\u274c recipient_id เป็น None!")
+        return
+
+    if not ACCESS_TOKEN:
+        print("\u274c ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
+        return
+
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
+    except requests.exceptions.RequestException as e:
+        print(f"\u274c ส่งข้อความล้มเหลว: {e}")
+
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
