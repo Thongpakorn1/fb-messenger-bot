@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import base64
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
@@ -48,6 +49,20 @@ def download_image(image_url):
         print(f"❌ การดาวน์โหลดภาพล้มเหลว: {e}")
         return None
 
+# ฟังก์ชันแปลงภาพเป็น base64
+def image_to_base64(image_url):
+    # ดาวน์โหลดภาพจาก URL
+    image = download_image(image_url)
+    if not image:
+        print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL: {image_url}")
+        return None
+
+    # แปลงภาพเป็น base64
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")  # หรือเลือกไฟล์อื่นที่เหมาะสม เช่น JPEG
+    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    return img_str
+
 # ฟังก์ชันการใช้ GPT-4 Vision วิเคราะห์ภาพ
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
@@ -60,6 +75,11 @@ def analyze_image_with_gpt4(image_url):
         print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL: {image_url}")
         return "ขอโทษค่ะ ไม่สามารถดาวน์โหลดภาพจาก URL ที่ให้มาได้"
     print(f"✅ ดาวน์โหลดภาพจาก URL สำเร็จ")
+
+     # แปลงภาพเป็น base64
+    img_base64 = image_to_base64(image_url)
+    if not img_base64:
+        return "ขอโทษค่ะ ไม่สามารถดาวน์โหลดภาพจาก URL ที่ให้มาได้"
 
     # ปรับปรุง prompt ให้ชัดเจนเพื่อให้ GPT-4o ตอบข้อมูลที่ครบถ้วน
     prompt_text = f"""
