@@ -9,6 +9,8 @@ from io import BytesIO
 from PIL import Image
 app = Flask(__name__)
 
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # ใส่ Bot Token ของคุณ
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # ใส่ Chat ID ของคุณ
 ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -144,6 +146,20 @@ def analyze_image_with_gpt4(image_url):
     except requests.exceptions.RequestException as e:
         print(f"❌ GPT-4 ล้มเหลว: {e}")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
+
+# ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
+def send_telegram_notification(message):
+    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
+    }
+    try:
+        response = requests.post(telegram_url, data=payload)
+        response.raise_for_status()
+        print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ ส่งข้อความแจ้งเตือนทาง Telegram ล้มเหลว: {e}")
 
 # ตอบ FAQ
 def get_faq_answer(user_message):
