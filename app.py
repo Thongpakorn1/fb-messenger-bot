@@ -74,22 +74,26 @@ def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
-
+        
+ # สร้างคำอธิบายของสินค้าทั้งหมดในฐานข้อมูล
     product_descriptions = "\n".join([
-        f"{item['id']} - {item['name']} - {item['price']}"
+        f"{item['id']} - {item['name']} - ขนาด: {item.get('size', 'ไม่ระบุ')} - น้ำหนัก: {item.get('weight', 'ไม่ระบุ')} - ราคา: {item['price']}"
         for item in product_list
     ])
 
-    prompt_text = f"""ภาพที่แนบมาคือภาพสินค้าจากลูกค้า กรุณาดูภาพแล้วเลือกสินค้าที่ตรงหรือใกล้เคียงที่สุดจากรายการด้านล่าง พร้อมตอบกลับเป็น:
+    # ปรับปรุง prompt ให้ GPT สามารถให้ข้อมูลครบถ้วน
+    prompt_text = f"""
+    ลูกค้าส่งภาพสินค้ามา กรุณาวิเคราะห์ภาพนี้และเปรียบเทียบกับสินค้าด้านล่าง โดยระบุสินค้าที่ตรงหรือใกล้เคียงที่สุดในระบบที่คุณเห็น:
 
-ชื่อสินค้า: ...
-ขนาด: ...
-น้ำหนัก: ...
-ราคา: ...ค่ะ
+    รายการสินค้า:
+    {product_descriptions}
 
-รายการสินค้า:
-{product_descriptions}
-"""
+    กรุณาตอบกลับในรูปแบบนี้:
+    ชื่อสินค้า: ...
+    ขนาด: ...
+    น้ำหนัก: ...
+    ราคา: ...ค่ะ
+    """
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -97,14 +101,15 @@ def analyze_image_with_gpt4(image_url):
     }
 
     payload = {
-        "model": "gpt-4o",
+        "model": "gpt-4o",  # ใช้ GPT-4o
         "messages": [
             {
                 "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt_text},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
+                "content": prompt_text
+            },
+            {
+                "role": "user",
+                "content": image_url  # ส่ง URL ของภาพที่ลูกค้าส่ง
             }
         ],
         "max_tokens": 500
@@ -113,9 +118,11 @@ def analyze_image_with_gpt4(image_url):
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
+        result = response.json()["choices"][0]["message"]["content"]
+        print(f"✅ คำตอบจาก GPT-4: {result}")
+        return result
     except Exception as e:
-        print("❌ GPT Vision ล้มเหลว:", e)
+        print(f"❌ GPT-4 ล้มเหลว: {e}")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ตอบ FAQ
