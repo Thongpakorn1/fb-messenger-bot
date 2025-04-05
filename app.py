@@ -19,8 +19,7 @@ def load_faq():
 
 faq_data = load_faq()
 
-# โหลดสินค้า
-# โหลดสินค้า
+# โหลดสินค้าเพียงครั้งเดียว
 def load_products():
     try:
         with open("products.json", "r", encoding="utf-8") as f:
@@ -29,17 +28,56 @@ def load_products():
         print(f"\u274c โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
         return []
 
-# ดึงข้อมูลสินค้าเพียงครั้งเดียว
+# โหลดสินค้าทั้งหมด
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
-# ฟังก์ชันเปรียบเทียบ URL ของภาพ
-def compare_image_url(image_url):
-    # เปรียบเทียบ URL ที่ลูกค้าส่งมาหรือ URL ของภาพใน JSON
-    for product in product_list:
-        if image_url == product['image']:  # เปรียบเทียบ URL ของภาพ
-            return product  # คืนข้อมูลของสินค้าที่ตรงกัน
-    return None  # ถ้าไม่พบสินค้าที่ตรงกัน
+# ฟังก์ชันการใช้ GPT-4 Vision วิเคราะห์ภาพ
+def analyze_image_with_gpt4(image_url):
+    if not OPENAI_API_KEY:
+        print("❌ ไม่มี OPENAI_API_KEY")
+        return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
+
+    product_descriptions = "\n".join([f"{item['name']} - {item['price']}" for item in product_list])
+
+    prompt_text = f"""ภาพที่แนบมาคือภาพสินค้าจากลูกค้า กรุณาดูภาพและเลือกสินค้าที่ตรงหรือใกล้เคียงที่สุดจากรายการด้านล่าง พร้อมตอบกลับเป็น:
+
+ชื่อสินค้า: ...
+ขนาด: ...
+น้ำหนัก: ...
+ราคา: ...ค่ะ
+
+รายการสินค้า:
+{product_descriptions}
+"""
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4o",  # ใช้ GPT-4 Vision
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt_text
+            },
+            {
+                "role": "user",
+                "content": image_url  # ส่ง URL ของภาพ
+            }
+        ],
+        "max_tokens": 500
+    }
+
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("❌ GPT Vision ล้มเหลว:", e)
+        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # จัดรูปแบบข้อความสินค้าสำหรับตอบกลับ
 def format_product_reply(product):
@@ -76,62 +114,6 @@ def send_message(recipient_id, message_text):
     except requests.exceptions.RequestException as e:
         print(f"\u274c ส่งข้อความล้มเหลว: {e}")
 
-# วิเคราะห์ภาพด้วย GPT-4 Vision
-def analyze_image_with_gpt4(image_url):
-    if not OPENAI_API_KEY:
-        print("❌ ไม่มี OPENAI_API_KEY")
-        return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
-
-    product_descriptions = "\n".join([
-        f"{item['id']} - {item['name']} - {item['price']}"
-        for item in product_list
-    ])
-
-    prompt_text = f"""ภาพที่แนบมาคือภาพสินค้าจากลูกค้า กรุณาดูภาพแล้วเลือกสินค้าที่ตรงหรือใกล้เคียงที่สุดจากรายการด้านล่าง พร้อมตอบกลับเป็น:
-
-ชื่อสินค้า: ...
-ขนาด: ...
-น้ำหนัก: ...
-ราคา: ...ค่ะ
-
-รายการสินค้า:
-{product_descriptions}
-"""
-
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "gpt-4o",
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt_text},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
-            }
-        ],
-        "max_tokens": 500
-    }
-
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        print("❌ GPT Vision ล้มเหลว:", e)
-        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
-
-# ตอบ FAQ
-def get_faq_answer(user_message):
-    for question, answer in faq_data.items():
-        if question in user_message:
-            return answer
-    return None
-
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -148,12 +130,14 @@ def webhook():
                             if attachment["type"] == "image":
                                 image_url = attachment["payload"]["url"]
                                 print(f"📷 ลูกค้าส่งภาพ: {image_url}")
-                                matched_product = compare_image_url(image_url)  # เปรียบเทียบ URL ของภาพ
-                                if matched_product:
-                                    reply_message = format_product_reply(matched_product)  # จัดรูปแบบข้อมูลสินค้า
-                                    send_message(sender_id, reply_message)  # ส่งข้อความกลับ
+                                
+                                # เรียกใช้ฟังก์ชัน analyze_image_with_gpt4
+                                vision_reply = analyze_image_with_gpt4(image_url)  # วิเคราะห์ภาพด้วย GPT-4 Vision
+                                
+                                if vision_reply:
+                                    send_message(sender_id, vision_reply)  # ส่งข้อความตอบกลับไปยังลูกค้า
                                 else:
-                                    send_message(sender_id, "ไม่พบสินค้าที่ตรงกับภาพที่ส่งมา")  # กรณีไม่พบสินค้า
+                                    send_message(sender_id, "ขอโทษค่ะ ระบบไม่สามารถตรวจสอบภาพได้ในขณะนี้")
                                 return "Message Received", 200
 
                     # ข้อความข้อความ
