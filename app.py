@@ -3,6 +3,7 @@ import os
 import requests
 import base64
 import requests
+import time
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
@@ -129,12 +130,15 @@ def analyze_image_with_gpt4(image_url):
     }
 
     try:
+        # เพิ่มการหน่วงเวลา 1 วินาทีระหว่างการส่งคำขอ
+        time.sleep(1)
+
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()["choices"][0]["message"]["content"]
         print(f"✅ คำตอบจาก GPT-4: {result}")
         return result
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"❌ GPT-4 ล้มเหลว: {e}")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
