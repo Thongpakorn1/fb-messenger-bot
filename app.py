@@ -150,10 +150,9 @@ def analyze_image_with_gpt4(image_url):
     }
 
     payload = {
-        "model": "gpt-4",
+        "model": "gpt-4o",
         "messages": [
-            {"role": "user", "content": prompt_text},
-            {"role": "user", "content": img_base64}
+            {"role": "user", "content": prompt_text}
         ],
         "max_tokens": 500
     }
@@ -166,9 +165,9 @@ def analyze_image_with_gpt4(image_url):
             send_telegram_notification("❌ ระบบไม่พบข้อมูลสินค้าที่ตรงจากภาพที่ลูกค้าส่งมา.")
         return result
     except requests.exceptions.RequestException as e:
-        print(f"❌ GPT-4 ล้มเหลว: {e}")
+        print(f"❌ GPT-4o ล้มเหลว: {e}")
+        return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ในขณะนี้"
         send_telegram_notification(f"❌ GPT-4 ล้มเหลวในการวิเคราะห์ภาพ: {image_url}")
-        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
@@ -240,7 +239,8 @@ def webhook():
                                 if attachment["type"] == "image":
                                     image_url = attachment["payload"]["url"]
                                     print(f"📷 ลูกค้าส่งภาพ: {image_url}")
-                                    vision_reply = analyze_image_with_gpt4(image_url)
+                                    # ส่งภาพไปให้ GPT-4o วิเคราะห์
+                                    vision_reply = analyze_image_with_gpt4(image_url, user_message="รายละเอียดของสินค้า")
                                     send_message(sender_id, vision_reply)
                                     return "Message Received", 200
 
