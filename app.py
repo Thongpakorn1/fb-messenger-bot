@@ -137,19 +137,21 @@ def send_telegram_notification(message):
         "text": message
     }
     try:
-        print("⏳ กำลังส่งข้อความไปยัง Telegram...")
         response = requests.post(telegram_url, data=payload)
         response.raise_for_status()
         print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
     except requests.exceptions.RequestException as e:
-        print(f"❌ ส่งข้อความแจ้งเตือนทาง Telegram ล้มเหลว: {e}")
+        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
 
-# ตอบ FAQ
+# ฟังก์ชันในการตอบคำถาม FAQ
 def get_faq_answer(user_message):
     for question, answer in faq_data.items():
         if question in user_message:
             return answer
-    return None
+
+    # หากไม่พบคำตอบจาก FAQ, ส่งการแจ้งเตือนทาง Telegram
+    send_telegram_notification(f"❌ ไม่พบคำตอบสำหรับคำถาม: {user_message}")
+    return None  # ถ้าไม่พบคำตอบจาก FAQ
 
 # Webhook
 @app.route("/webhook", methods=["POST"])
