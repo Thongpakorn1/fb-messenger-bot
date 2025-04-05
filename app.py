@@ -2,6 +2,8 @@ import json
 import os
 import requests
 import base64
+import cv2
+import numpy as np
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
@@ -38,6 +40,17 @@ def load_products():
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
+# ฟังก์ชันดาวน์โหลดภาพจาก URL
+def download_image(image_url):
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # ตรวจสอบสถานะการตอบกลับจากเซิร์ฟเวอร์
+        img = Image.open(BytesIO(response.content))  # ใช้ PIL เปิดไฟล์ภาพจาก memory
+        return img
+    except requests.exceptions.RequestException as e:
+        print(f"❌ การดาวน์โหลดภาพล้มเหลว: {e}")
+        return None
+
 # ฟังก์ชันแปลงภาพเป็น base64
 def image_to_base64(image_url):
     # ดาวน์โหลดภาพจาก URL
@@ -52,13 +65,40 @@ def image_to_base64(image_url):
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return img_str
 
+# ฟังก์ชันเปรียบเทียบรูปภาพด้วย OpenCV
+def compare_images(image_url, product_image_url):
+    # ดาวน์โหลดภาพจาก URL
+    img1 = download_image(image_url)  # ภาพจาก URL ของสินค้าจากเว็บไซต์
+    img2 = download_image(product_image_url)  # ภาพจาก URL ของสินค้าที่เก็บในฐานข้อมูล
+
+    if img1 is None or img2 is None:
+        return None
+
+    # แปลงภาพเป็น grayscale
+    img1_gray = cv2.cvtColor(np.array(img1), cv2.COLOR_RGB2GRAY)
+    img2_gray = cv2.cvtColor(np.array(img2), cv2.COLOR_RGB2GRAY)
+
+    # ใช้ ORB (Oriented FAST and Rotated BRIEF) ในการหา keypoints และ descriptors
+    orb = cv2.ORB_create()
+    kp1, des1 = orb.detectAndCompute(img1_gray, None)
+    kp2, des2 = orb.detectAndCompute(img2_gray, None)
+
+    # ใช้ BFMatcher ในการจับคู่ descriptors
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(des1, des2)
+    
+    # เรียงลำดับการจับคู่จากน้อยไปมาก
+    matches = sorted(matches, key=lambda x: x.distance)
+
+    return len(matches)  # จำนวนการจับคู่ที่พบ
+
 # ฟังก์ชันการใช้ GPT-4 Vision วิเคราะห์ภาพ
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-     # แปลงภาพเป็น base64
+    # แปลงภาพเป็น base64
     img_base64 = image_to_base64(image_url)
     if not img_base64:
         return "ขอโทษค่ะ ไม่สามารถดาวน์โหลดภาพจาก URL ที่ให้มาได้"
@@ -87,7 +127,7 @@ def analyze_image_with_gpt4(image_url):
             },
             {
                 "role": "user",
-                "content": image_url  # หรือส่งไฟล์ภาพที่ดาวน์โหลด (ขึ้นอยู่กับ API ที่ใช้งาน)
+                "content": img_base64  # ส่ง base64 ของภาพไปให้ GPT-4o วิเคราะห์
             }
         ],
         "max_tokens": 500
@@ -104,14 +144,6 @@ def analyze_image_with_gpt4(image_url):
         send_telegram_notification("❌ ระบบไม่สามารถวิเคราะห์ภาพได้หรือไม่พบข้อมูลสินค้าที่ตรง")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
-# ฟังก์ชันเปรียบเทียบ URL ของภาพ
-def compare_image_url(image_url):
-    # เปรียบเทียบ URL ที่ลูกค้าส่งมาหรือ URL ของภาพใน JSON
-    for product in product_list:
-        if image_url == product['image']:  # เปรียบเทียบ URL ของภาพ
-            return product  # คืนข้อมูลของสินค้าที่ตรงกัน
-    return None  # ถ้าไม่พบสินค้าที่ตรงกัน
-
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -124,7 +156,7 @@ def send_telegram_notification(message):
         response.raise_for_status()
         print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
     except requests.exceptions.RequestException as e:
-        print(f"❌ ส่งข้อความแจ้งเตือนทาง Telegram ล้มเหลว: {e}")
+        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
 
 # ฟังก์ชันในการตอบคำถาม FAQ
 def get_faq_answer(user_message):
@@ -185,14 +217,15 @@ def webhook():
                                 image_url = attachment["payload"]["url"]
                                 print(f"📷 ลูกค้าส่งภาพ: {image_url}")
                                 
-                                # เรียกใช้ฟังก์ชัน analyze_image_with_gpt4
-                                vision_reply = analyze_image_with_gpt4(image_url)  # วิเคราะห์ภาพด้วย GPT-4o
+                                # เปรียบเทียบภาพที่ลูกค้าส่งมาว่าเป็นสินค้าชิ้นไหน
+                                for product in product_list:
+                                    if compare_images(image_url, product['image']) > 30:  # เปรียบเทียบกับสินค้าบนเว็บไซต์
+                                        vision_reply = format_product_reply(product)  # จัดรูปแบบข้อมูลสินค้า
+                                        send_message(sender_id, vision_reply)  # ส่งข้อความตอบกลับไปยังลูกค้า
+                                        return "Message Received", 200
                                 
-                                if vision_reply:
-                                    send_message(sender_id, vision_reply)  # ส่งข้อความตอบกลับไปยังลูกค้า
-                                else:
-                                    send_message(sender_id, "ขอโทษค่ะ ระบบไม่สามารถตรวจสอบภาพได้ในขณะนี้")
-                                    send_telegram_notification(f"ลูกค้า {sender_id} ส่งภาพที่ไม่สามารถวิเคราะห์ได้")  # แจ้งเตือนไปยัง Telegram
+                                send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับภาพที่ส่งมา")
+                                send_telegram_notification(f"ลูกค้า {sender_id} ส่งภาพที่ไม่สามารถวิเคราะห์ได้")  # แจ้งเตือนไปยัง Telegram
                                 return "Message Received", 200
 
                     # ข้อความข้อความ
