@@ -1,5 +1,3 @@
 Flask
 requests
-Pillow
-imagehash
 gunicorn
