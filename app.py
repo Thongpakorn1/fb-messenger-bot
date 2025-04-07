@@ -128,41 +128,42 @@ def image_to_base64(image_url):
         print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL หรือแปลงเป็น base64: {e}")
         return None
 
-# ฟังก์ชันการใช้ GPT-4 วิเคราะห์ภาพ
+# วิเคราะห์ภาพด้วย GPT-4o Vision
+
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-    # ดึงข้อความจากภาพโดยใช้ OCR
-    product_code = extract_number_from_image(image_url)
-    if not product_code:
-        return "ขอโทษค่ะ ไม่สามารถดึงข้อมูลจากภาพได้"
+    # รวมรายละเอียดสินค้า
+    product_descriptions = "\n".join([
+        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
+        for item in product_list
+    ])
 
-    # ค้นหาสินค้าที่ตรงกับเลขที่ดึงจากภาพ
-    matched_product = get_product_by_code(product_code)
-    if not matched_product:
-        return "ขอโทษค่ะ ระบบไม่พบสินค้าที่ตรงกับเลขในภาพ"
-
-    # สร้างข้อความเพื่อส่งให้ GPT-4o วิเคราะห์
     prompt_text = f"""
-    ลูกค้าส่งภาพสินค้าที่มีรหัส {product_code}. ข้อมูลของสินค้าชิ้นนี้คือ:
-    ชื่อสินค้า: {matched_product['name']}
-    ขนาด: {matched_product.get('size', 'ไม่ระบุ')}
-    น้ำหนัก: {matched_product.get('weight', 'ไม่ระบุ')}
-    ราคา: {matched_product['price']}
-    กรุณาตอบคำถามที่เกี่ยวข้องกับสินค้าชิ้นนี้
-    """
-    
+คุณคือนักวิเคราะห์ภาพสินค้าโบราณ
+จากภาพด้านล่าง ช่วยเปรียบเทียบกับรายการสินค้าที่มีอยู่ในระบบ แล้วบอกว่าใกล้เคียงกับรายการใดมากที่สุด พร้อมแจ้งขนาด น้ำหนัก และราคา:
+
+รายการสินค้า:
+{product_descriptions}
+"""
+
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "gpt-4",  # ใช้ GPT-4o
+        "model": "gpt-4o",
         "messages": [
-            {"role": "user", "content": prompt_text}
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+            }
         ],
         "max_tokens": 500
     }
@@ -170,10 +171,9 @@ def analyze_image_with_gpt4(image_url):
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
-        result = response.json()["choices"][0]["message"]["content"]
-        return result
-    except requests.exceptions.RequestException as e:
-        print(f"❌ GPT-4 ล้มเหลว: {e}")
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
