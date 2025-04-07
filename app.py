@@ -233,7 +233,6 @@ def webhook():
 
     data = request.get_json()
     try:
-        data = request.get_json()
         if data.get("object") == "page":
             for entry in data.get("entry", []):
                 for messaging_event in entry.get("messaging", []):
