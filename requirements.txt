@@ -4,3 +4,4 @@ Pillow
 gunicorn
 pytesseract
 pyzbar
+zbar
