@@ -43,6 +43,20 @@ print(f"📦 โหลดสินค้าทั้งหมด {len(product_li
 
 import subprocess
 
+# ฟังก์ชันดาวน์โหลดภาพจาก URL
+def download_image(image_url):
+    try:
+        # ดาวน์โหลดภาพจาก URL
+        response = requests.get(image_url)
+        response.raise_for_status()  # ตรวจสอบว่าได้รับการตอบกลับสำเร็จ
+        image_path = "downloaded_image.jpg"  # ตั้งชื่อไฟล์ที่ดาวน์โหลด
+        with open(image_path, 'wb') as f:
+            f.write(response.content)  # เขียนข้อมูลภาพลงในไฟล์
+        return image_path  # คืนค่าพาธของไฟล์ที่ดาวน์โหลด
+    except Exception as e:
+        print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL: {e}")
+        return None
+
 def extract_product_code_from_qr(image_path):
     try:
         # เรียกใช้งานฟังก์ชันใน read_qr_code.py เพื่อดึงข้อมูลจาก QR Code
@@ -207,26 +221,27 @@ def webhook():
                                         # ดาวน์โหลดภาพจาก URL
                                         image_path = download_image(image_url)  # ฟังก์ชันดาวน์โหลดภาพ
                                         
-                                        # ดึงรหัสสินค้าจาก QR Code ในภาพ
-                                        product_code = extract_product_code_from_qr(image_path)
-                                        
-                                        if product_code:
-                                            # ค้นหาสินค้าจากรหัส
-                                            matched_product = get_product_by_code(product_code)
+                                        if image_path:
+                                            # ดึงรหัสสินค้าจาก QR Code ในภาพ
+                                            product_code = extract_product_code_from_qr(image_path)
                                             
-                                            if matched_product:
-                                                # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
-                                                product_info = (
-                                                    f"ชื่อสินค้า: {matched_product['name']}\n"
-                                                    f"ขนาด: {matched_product['size']}\n"
-                                                    f"น้ำหนัก: {matched_product['weight']}\n"
-                                                    f"ราคา: {matched_product['price']}\n"
-                                                )
-                                                send_message(sender_id, product_info)
+                                            if product_code:
+                                                # ค้นหาสินค้าจากรหัส
+                                                matched_product = get_product_by_code(product_code)
+                                                
+                                                if matched_product:
+                                                    # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
+                                                    product_info = (
+                                                        f"ชื่อสินค้า: {matched_product['name']}\n"
+                                                        f"ขนาด: {matched_product['size']}\n"
+                                                        f"น้ำหนัก: {matched_product['weight']}\n"
+                                                        f"ราคา: {matched_product['price']}\n"
+                                                    )
+                                                    send_message(sender_id, product_info)
+                                                else:
+                                                    send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
                                             else:
-                                                send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
-                                        else:
-                                            send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
+                                                send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
 
                                     return "Message Received", 200
 
