@@ -275,23 +275,22 @@ def webhook():
         return "Error", 500
 
 
-                        # ข้อความข้อความ
-                        user_message = messaging_event["message"].get("text", "").strip()
-                        print(f"ข้อความที่ได้รับ: {user_message}")
+ # ข้อความข้อความ
+    user_message = messaging_event["message"].get("text", "").strip()
+    print(f"ข้อความที่ได้รับ: {user_message}")
 
-                        faq_answer = get_faq_answer(user_message)
-                        if faq_answer:
-                            send_message(sender_id, faq_answer)
-                        else:
-                            send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
+    faq_answer = get_faq_answer(user_message)
+    if faq_answer:
+        send_message(sender_id, faq_answer)
+    else:
+        send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
 
-                            # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
-                            if not sent_notification:
-                                send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
-                                sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
+        # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
+        if not sent_notification:
+            send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
+            sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
 
-        return "Message Received", 200
-
+    return "Message Received", 200
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
         # แจ้งเตือนข้อผิดพลาดไปที่ Telegram
