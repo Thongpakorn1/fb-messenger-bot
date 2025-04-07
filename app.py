@@ -25,6 +25,7 @@ def load_faq():
         return {}
 
 faq_data = load_faq()
+
 # โหลดสินค้า
 def load_products():
     try:
