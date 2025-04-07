@@ -154,7 +154,14 @@ def send_message(recipient_id, message_text):
         response.raise_for_status()
         print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
     except requests.exceptions.RequestException as e:
-        print(f"\u274c ส่งข้อความล้มเหลว: {e}")        
+        print(f"\u274c ส่งข้อความล้มเหลว: {e}")
+
+# ฟังก์ชันในการตอบคำถาม FAQ
+def get_faq_answer(user_message):
+    for question, answer in faq_data.items():
+        if question in user_message:
+            return answer
+    return None  # ถ้าไม่พบคำตอบจาก FAQ
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
@@ -180,22 +187,31 @@ def webhook():
                 for messaging_event in entry.get("messaging", []):
                     sender_id = messaging_event["sender"]["id"]
                     if "message" in messaging_event:
-                        # กรณีมีรูปภาพ
-                        if "attachments" in messaging_event["message"]:
-                            for attachment in messaging_event["message"]["attachments"]:
-                                if attachment["type"] == "image":
-                                    image_url = attachment["payload"]["url"]
-                                    print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+                        # ตรวจสอบข้อความที่ได้รับจากผู้ใช้
+                        user_message = messaging_event["message"].get("text", "").strip()
+                        print(f"ข้อความที่ได้รับ: {user_message}")
 
-                                    # เรียกใช้ GPT-4 Vision วิเคราะห์ภาพ
-                                    material = "ทับทิม"  # ตัวอย่างวัสดุที่ได้จากคำถาม
-                                    vision_reply = analyze_image_with_gpt4(image_url, material)
-                                    send_message(sender_id, vision_reply)
+                        # ตรวจสอบคำถาม FAQ
+                        faq_answer = get_faq_answer(user_message)
+                        if faq_answer:
+                            send_message(sender_id, faq_answer)  # ถ้าเป็นคำถามใน FAQ ส่งคำตอบกลับ
+                        else:
+                            # กรณีไม่ใช่ FAQ, จัดการผ่าน GPT-4 Vision หรือคำตอบอื่นๆ
+                            if "attachments" in messaging_event["message"]:
+                                for attachment in messaging_event["message"]["attachments"]:
+                                    if attachment["type"] == "image":
+                                        image_url = attachment["payload"]["url"]
+                                        print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+
+                                        # เรียกใช้ GPT-4 Vision วิเคราะห์ภาพ
+                                        material = "ทับทิม"  # ตัวอย่างวัสดุที่ได้จากคำถาม
+                                        vision_reply = analyze_image_with_gpt4(image_url, material)
+                                        send_message(sender_id, vision_reply)
 
                                     return "Message Received", 200
 
         return "Message Received", 200
-
+        
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
         return "Error", 500
