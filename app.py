@@ -25,7 +25,6 @@ def load_faq():
         return {}
 
 faq_data = load_faq()
-
 # โหลดสินค้า
 def load_products():
     try:
@@ -37,13 +36,6 @@ def load_products():
 
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
-
-# เปรียบเทียบ URL ของภาพ
-def compare_image_url(image_url):
-    for product in product_list:
-        if image_url == product['image']:  # เปรียบเทียบ URL ของภาพ
-            return product
-    return None  # ถ้าไม่พบสินค้าที่ตรงกัน
 
 # ฟังก์ชันการใช้ OCR เพื่อดึงรหัสสินค้าจากภาพ
 def extract_product_code_from_image(image_url):
@@ -70,7 +62,7 @@ def get_product_by_code(product_code):
     return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้า
 
 # ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า
-def send_product_details_to_customer(product):
+def send_product_details_to_customer(sender_id, product):
     if product:
         product_info = (
             f"ชื่อสินค้า: {product['name']}\n"
@@ -78,11 +70,10 @@ def send_product_details_to_customer(product):
             f"น้ำหนัก: {product['weight']}\n"
             f"ราคา: {product['price']}\n"
         )
-        # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger หรือช่องทางอื่น ๆ
-        send_message(customer_id, product_info)
+        send_message(sender_id, product_info)  # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger
     else:
-        send_message(customer_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
-
+        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
+        
 # ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
 def format_era_reply(product):
     return f"ยุคสมัย: {product.get('era', 'ไม่ระบุ')}"
@@ -90,7 +81,7 @@ def format_era_reply(product):
 # ฟังก์ชันที่ใช้ในการวิเคราะห์ภาพและตอบกลับ
 def analyze_image_and_respond(image_url, user_message):
     # ดึงเลขจากภาพ
-    product_code = extract_number_from_image(image_url)
+    product_code = extract_product_code_from_image(image_url)
     if not product_code:
         return "ขอโทษค่ะ ไม่สามารถดึงข้อมูลจากภาพได้"
 
