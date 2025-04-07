@@ -8,6 +8,8 @@ import subprocess
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
+from pyzbar.pyzbar import decode
+
 app = Flask(__name__)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # ใส่ Bot Token ของคุณ
@@ -35,13 +37,11 @@ def load_products():
         with open("products.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"\u274c โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
+        print(f"❌ โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
         return []
 
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
-
-import subprocess
 
 # ฟังก์ชันดาวน์โหลดภาพจาก URL
 def download_image(image_url):
@@ -57,30 +57,31 @@ def download_image(image_url):
         print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL: {e}")
         return None
 
-def extract_product_code_from_qr(image_path):
+# ฟังก์ชันอ่าน QR Code จากภาพ
+def read_qr_code(image_path):
     try:
-        # เรียกใช้งานฟังก์ชันใน read_qr_code.py เพื่อดึงข้อมูลจาก QR Code
-        result = subprocess.run(['python', 'read_qr_code.py', image_path], capture_output=True, text=True)
+        # เปิดภาพ
+        image = Image.open(image_path)
         
-        # ตรวจสอบผลลัพธ์จาก subprocess
-        if result.returncode == 0:
-            return result.stdout.strip()  # คืนค่ารหัสสินค้า
-        else:
-            print("❌ ไม่สามารถอ่าน QR Code ได้จากภาพ")
-            return None
+        # ใช้ pyzbar เพื่ออ่าน QR Code
+        decoded_objects = decode(image)
+        for obj in decoded_objects:
+            # คืนค่าข้อมูลจาก QR Code
+            qr_data = obj.data.decode('utf-8')
+            print(f"ข้อมูลจาก QR Code: {qr_data}")
+            return qr_data  # คืนค่ารหัสสินค้า
     except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาด: {e}")
+        print(f"❌ เกิดข้อผิดพลาดในการอ่าน QR Code: {e}")
         return None
 
-# ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้าและวัสดุ
-def get_product_by_code_and_material(product_code, material):
+# ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้า
+def get_product_by_code(product_code):
     for product in product_list:
-        # ตรวจสอบเลขโค้ดสินค้าและวัสดุ (material)
-        if product_code == product.get('product_code') and material.lower() in product.get('material', '').lower():
+        if product_code == product.get('product_code'):
             return product
-    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้าและวัสดุ
+    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้า
 
-# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า
+# ฟังก์ชันแสดงข้อมูลสินค้ากลับไปยังลูกค้า
 def send_product_details_to_customer(sender_id, product):
     if product:
         product_info = (
@@ -92,11 +93,28 @@ def send_product_details_to_customer(sender_id, product):
         )
         send_message(sender_id, product_info)  # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger
     else:
-        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสและวัสดุที่คุณส่งมา")
+        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
 
 # ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
 def format_era_reply(product):
     return f"ยุคสมัย: {product.get('era', 'ไม่ระบุ')}"
+
+# ฟังก์ชันส่งข้อความกลับ Messenger
+def send_message(recipient_id, message_text):
+    ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")  # ใส่ Access Token ของคุณ
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        print(f"✅ ส่งข้อความสำเร็จ: {message_text}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ ส่งข้อความล้มเหลว: {e}")
 
 # ฟังก์ชันที่ใช้ในการวิเคราะห์ภาพและตอบกลับ
 def analyze_image_with_gpt4(image_url, material):
@@ -146,30 +164,6 @@ def analyze_image_with_gpt4(image_url, material):
     except Exception as e:
         print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
-
-# ฟังก์ชันส่งข้อความกลับ Messenger
-def send_message(recipient_id, message_text):
-    if not recipient_id:
-        print("\u274c recipient_id เป็น None!")
-        return
-
-    if not ACCESS_TOKEN:
-        print("\u274c ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
-        return
-
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
-    except requests.exceptions.RequestException as e:
-        print(f"\u274c ส่งข้อความล้มเหลว: {e}")
 
 # ฟังก์ชันในการตอบคำถาม FAQ
 def get_faq_answer(user_message):
@@ -223,7 +217,7 @@ def webhook():
                                         
                                         if image_path:
                                             # ดึงรหัสสินค้าจาก QR Code ในภาพ
-                                            product_code = extract_product_code_from_qr(image_path)
+                                            product_code = read_qr_code(image_path)
                                             
                                             if product_code:
                                                 # ค้นหาสินค้าจากรหัส
@@ -231,13 +225,7 @@ def webhook():
                                                 
                                                 if matched_product:
                                                     # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
-                                                    product_info = (
-                                                        f"ชื่อสินค้า: {matched_product['name']}\n"
-                                                        f"ขนาด: {matched_product['size']}\n"
-                                                        f"น้ำหนัก: {matched_product['weight']}\n"
-                                                        f"ราคา: {matched_product['price']}\n"
-                                                    )
-                                                    send_message(sender_id, product_info)
+                                                    send_product_details_to_customer(sender_id, matched_product)
                                                 else:
                                                     send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
                                             else:
@@ -251,20 +239,6 @@ def webhook():
         print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
         return "Error", 500
 
-    # ข้อความข้อความ
-    user_message = messaging_event["message"].get("text", "").strip()
-    print(f"ข้อความที่ได้รับ: {user_message}")
-
-    faq_answer = get_faq_answer(user_message)
-    if faq_answer:
-        send_message(sender_id, faq_answer)
-    else:
-        send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
-
-        # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
-        if not sent_notification:
-            send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
-            sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
 
 @app.route("/", methods=["GET"])
 def home():
