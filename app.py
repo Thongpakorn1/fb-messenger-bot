@@ -17,12 +17,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # ตั้งค่า Tesseract path
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# ตัวอย่างการใช้ Tesseract OCR กับภาพ
-from PIL import Image
-image = Image.open('path_to_your_image.jpg')
-text = pytesseract.image_to_string(image)
-print(text)
-
 # โหลด FAQ
 def load_faq():
     try:
@@ -46,6 +40,49 @@ def load_products():
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
+# ฟังก์ชันการใช้ OCR เพื่อดึงรหัสสินค้าจากภาพ
+def extract_product_code_from_image(image_url):
+    try:
+        # ดาวน์โหลดภาพจาก URL
+        response = requests.get(image_url)
+        image = Image.open(BytesIO(response.content))
+        
+        # ใช้ Tesseract OCR เพื่อดึงตัวเลขจากภาพ
+        extracted_text = pytesseract.image_to_string(image, config='outputbase digits')
+        print(f"ตัวเลขที่ดึงออกจากภาพ: {extracted_text.strip()}")
+        
+        # คืนค่ารหัสสินค้า (หากพบ)
+        return extracted_text.strip()
+    except Exception as e:
+        print(f"❌ ไม่สามารถดึงตัวเลขจากภาพได้: {e}")
+        return None
+
+# ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้าและวัสดุ
+def get_product_by_code_and_material(product_code, material):
+    for product in product_list:
+        # ตรวจสอบเลขโค้ดสินค้าและวัสดุ (material)
+        if product_code == product.get('product_code') and material.lower() in product.get('material', '').lower():
+            return product
+    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้าและวัสดุ
+
+# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า
+def send_product_details_to_customer(sender_id, product):
+    if product:
+        product_info = (
+            f"ชื่อสินค้า: {product['name']}\n"
+            f"วัสดุ: {product['material']}\n"
+            f"ขนาด: {product['size']}\n"
+            f"น้ำหนัก: {product['weight']}\n"
+            f"ราคา: {product['price']}\n"
+        )
+        send_message(sender_id, product_info)  # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger
+    else:
+        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสและวัสดุที่คุณส่งมา")
+        
+# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
+def format_era_reply(product):
+    return f"ยุคสมัย: {product.get('era', 'ไม่ระบุ')}"
+
 # ฟังก์ชันที่ใช้ในการวิเคราะห์ภาพและตอบกลับ
 def analyze_image_with_gpt4(image_url, material):
     if not OPENAI_API_KEY:
@@ -53,7 +90,7 @@ def analyze_image_with_gpt4(image_url, material):
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
     # รวมรายละเอียดสินค้า
-    product_descriptions = "\n".join([
+    product_descriptions = "\n".join([ 
         f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท, วัสดุ: {item['material']}"
         for item in product_list
     ])
@@ -133,52 +170,9 @@ def send_telegram_notification(message):
     except requests.exceptions.RequestException as e:
         print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
 
-# ฟังก์ชันดาวน์โหลดภาพจาก URL และแปลงเป็น base64
-def image_to_base64(image_url):
-    try:
-        response = requests.get(image_url)
-        response.raise_for_status()  # ตรวจสอบสถานะการดาวน์โหลด
-        image = Image.open(BytesIO(response.content))  # เปิดภาพจาก BytesIO
-        buffered = BytesIO()
-        image.save(buffered, format="PNG")  # แปลงเป็น PNG หรือไฟล์ประเภทอื่น
-        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return img_str
-    except Exception as e:
-        print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL หรือแปลงเป็น base64: {e}")
-        return None
-
-# ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
-def send_telegram_notification(message):
-    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message
-    }
-    try:
-        response = requests.post(telegram_url, data=payload)
-        response.raise_for_status()
-        print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
-
-# ฟังก์ชันในการตอบคำถาม FAQ
-def get_faq_answer(user_message):
-    for question, answer in faq_data.items():
-        if question in user_message:
-            return answer
-
-    # หากไม่พบคำตอบจาก FAQ, ส่งการแจ้งเตือนทาง Telegram
-    send_telegram_notification(f"❌ ไม่พบคำตอบสำหรับคำถาม: {user_message}")
-    return None  # ถ้าไม่พบคำตอบจาก FAQ
-
-# สถานะการส่งแจ้งเตือน Telegram
-sent_notification = False  # ตัวแปรเก็บสถานะการส่งข้อความไปยัง Telegram
-
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    global sent_notification  # ใช้ตัวแปร global เพื่อให้สามารถเปลี่ยนค่าได้
-
     data = request.get_json()
     try:
         if data.get("object") == "page":
@@ -205,24 +199,6 @@ def webhook():
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
         return "Error", 500
-
-
-    # ข้อความข้อความ
-    user_message = messaging_event["message"].get("text", "").strip()
-    print(f"ข้อความที่ได้รับ: {user_message}")
-
-    faq_answer = get_faq_answer(user_message)
-    if faq_answer:
-        send_message(sender_id, faq_answer)
-    else:
-        send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
-
-        # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
-        if not sent_notification:
-            send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
-            sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
-
-    return "Message Received", 200
 
 @app.route("/", methods=["GET"])
 def home():
