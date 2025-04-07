@@ -54,25 +54,27 @@ def extract_product_code_from_image(image_url):
         print(f"❌ ไม่สามารถดึงตัวเลขจากภาพได้: {e}")
         return None
 
-# ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้า
-def get_product_by_code(product_code):
+# ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้าและวัสดุ
+def get_product_by_code_and_material(product_code, material):
     for product in product_list:
-        if product_code == product.get('product_code'):
+        # ตรวจสอบเลขโค้ดสินค้าและวัสดุ (material)
+        if product_code == product.get('product_code') and material.lower() in product.get('material', '').lower():
             return product
-    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้า
+    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้าและวัสดุ
 
 # ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า
 def send_product_details_to_customer(sender_id, product):
     if product:
         product_info = (
             f"ชื่อสินค้า: {product['name']}\n"
+            f"วัสดุ: {product['material']}\n"
             f"ขนาด: {product['size']}\n"
             f"น้ำหนัก: {product['weight']}\n"
             f"ราคา: {product['price']}\n"
         )
         send_message(sender_id, product_info)  # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger
     else:
-        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
+        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสและวัสดุที่คุณส่งมา")
         
 # ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
 def format_era_reply(product):
@@ -86,9 +88,9 @@ def analyze_image_and_respond(image_url, user_message):
         return "ขอโทษค่ะ ไม่สามารถดึงข้อมูลจากภาพได้"
 
     # ค้นหาสินค้าที่ตรงกับเลขที่ดึงจากภาพ
-    matched_product = get_product_by_code(product_code)
+    matched_product = get_product_by_code_and_material(product_code, "ทับทิม")  # สมมติว่าเราได้วัสดุทับทิมจากการตรวจจับ
     if not matched_product:
-        return "ขอโทษค่ะ ระบบไม่พบสินค้าที่ตรงกับเลขในภาพ"
+        return "ขอโทษค่ะ ระบบไม่พบสินค้าที่ตรงกับเลขในภาพและวัสดุที่กำหนด"
 
     # กรณีลูกค้าถามราคา, ขนาด, น้ำหนัก
     if 'ราคา' in user_message or 'รายละเอียด' in user_message:
@@ -126,54 +128,6 @@ def image_to_base64(image_url):
     except Exception as e:
         print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL หรือแปลงเป็น base64: {e}")
         return None
-
-# วิเคราะห์ภาพด้วย GPT-4o Vision
-
-def analyze_image_with_gpt4(image_url):
-    if not OPENAI_API_KEY:
-        print("❌ ไม่มี OPENAI_API_KEY")
-        return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
-
-    # รวมรายละเอียดสินค้า
-    product_descriptions = "\n".join([
-        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
-        for item in product_list
-    ])
-
-    prompt_text = f"""
-คุณคือนักวิเคราะห์ภาพสินค้าโบราณ
-จากภาพที่ลูกค้าส่งมานี้ ช่วยเปรียบเทียบกับรายการสินค้าที่มีในระบบ โดยดูจากลักษณะต่างๆ เช่น ตัวเลขในรูป (เช่น 0000000001) วัสดุ (เช่น ทับทิม, ทอง, เงิน) และการออกแบบ (เช่น การประดับ, ลายสลัก) แล้วบอกว่าใกล้เคียงที่สุดคือสินค้ารายการไหน โดยระบุ **รหัสสินค้า** (product_code) และข้อมูลที่ชัดเจนตามนี้:
-
-รายการสินค้า:
-{product_descriptions}
-"""
-
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "gpt-4o",
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt_text},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
-            }
-        ],
-        "max_tokens": 500
-    }
-
-    try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        print("❌ GPT Vision ล้มเหลว:", e)
-        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
@@ -248,8 +202,8 @@ def webhook():
                                     # ดึงรหัสสินค้าจากภาพ
                                     product_code = extract_product_code_from_image(image_url)
                                     if product_code:
-                                        # ค้นหาสินค้าจากรหัส
-                                        matched_product = get_product_by_code(product_code)
+                                        # ค้นหาสินค้าจากรหัสและวัสดุ
+                                        matched_product = get_product_by_code_and_material(product_code, "ทับทิม")  # สมมติว่าเราได้วัสดุทับทิมจากการตรวจจับ
                                         
                                         if matched_product:
                                             # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
@@ -261,7 +215,7 @@ def webhook():
                                             )
                                             send_message(sender_id, product_info)
                                         else:
-                                            send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
+                                            send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสและวัสดุที่คุณส่งมา")
                                     else:
                                         send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
 
