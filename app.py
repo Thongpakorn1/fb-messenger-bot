@@ -4,6 +4,7 @@ import requests
 import base64
 import time
 import pytesseract
+import subprocess
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
@@ -40,21 +41,21 @@ def load_products():
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
-# ฟังก์ชันการใช้ OCR เพื่อดึงรหัสสินค้าจากภาพ
-def extract_product_code_from_image(image_url):
+import subprocess
+
+def extract_product_code_from_qr(image_path):
     try:
-        # ดาวน์โหลดภาพจาก URL
-        response = requests.get(image_url)
-        image = Image.open(BytesIO(response.content))
+        # เรียกใช้งานฟังก์ชันใน read_qr_code.py เพื่อดึงข้อมูลจาก QR Code
+        result = subprocess.run(['python', 'read_qr_code.py', image_path], capture_output=True, text=True)
         
-        # ใช้ Tesseract OCR เพื่อดึงตัวเลขจากภาพ
-        extracted_text = pytesseract.image_to_string(image, config='outputbase digits')
-        print(f"ตัวเลขที่ดึงออกจากภาพ: {extracted_text.strip()}")
-        
-        # คืนค่ารหัสสินค้า (หากพบ)
-        return extracted_text.strip()
+        # ตรวจสอบผลลัพธ์จาก subprocess
+        if result.returncode == 0:
+            return result.stdout.strip()  # คืนค่ารหัสสินค้า
+        else:
+            print("❌ ไม่สามารถอ่าน QR Code ได้จากภาพ")
+            return None
     except Exception as e:
-        print(f"❌ ไม่สามารถดึงตัวเลขจากภาพได้: {e}")
+        print(f"❌ เกิดข้อผิดพลาด: {e}")
         return None
 
 # ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้าและวัสดุ
@@ -196,17 +197,36 @@ def webhook():
                         if faq_answer:
                             send_message(sender_id, faq_answer)  # ถ้าเป็นคำถามใน FAQ ส่งคำตอบกลับ
                         else:
-                            # กรณีไม่ใช่ FAQ, จัดการผ่าน GPT-4 Vision หรือคำตอบอื่นๆ
-                            if "attachments" in messaging_event["message"]:
-                                for attachment in messaging_event["message"]["attachments"]:
-                                    if attachment["type"] == "image":
-                                        image_url = attachment["payload"]["url"]
-                                        print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+                            # กรณีมีรูปภาพ
+                        if "attachments" in messaging_event["message"]:
+                            for attachment in messaging_event["message"]["attachments"]:
+                                if attachment["type"] == "image":
+                                    image_url = attachment["payload"]["url"]
+                                    print(f"📷 ลูกค้าส่งภาพ: {image_url}")
 
-                                        # เรียกใช้ GPT-4 Vision วิเคราะห์ภาพ
-                                        material = "ทับทิม"  # ตัวอย่างวัสดุที่ได้จากคำถาม
-                                        vision_reply = analyze_image_with_gpt4(image_url, material)
-                                        send_message(sender_id, vision_reply)
+                                    # ดาวน์โหลดภาพจาก URL
+                                    image_path = download_image(image_url)  # ฟังก์ชันดาวน์โหลดภาพ
+                                    
+                                    # ดึงรหัสสินค้าจาก QR Code ในภาพ
+                                    product_code = extract_product_code_from_qr(image_path)
+                                    
+                                    if product_code:
+                                        # ค้นหาสินค้าจากรหัส
+                                        matched_product = get_product_by_code(product_code)
+                                        
+                                        if matched_product:
+                                            # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
+                                            product_info = (
+                                                f"ชื่อสินค้า: {matched_product['name']}\n"
+                                                f"ขนาด: {matched_product['size']}\n"
+                                                f"น้ำหนัก: {matched_product['weight']}\n"
+                                                f"ราคา: {matched_product['price']}\n"
+                                            )
+                                            send_message(sender_id, product_info)
+                                        else:
+                                            send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
+                                    else:
+                                        send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
 
                                     return "Message Received", 200
 
