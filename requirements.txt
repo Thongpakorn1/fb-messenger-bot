@@ -3,4 +3,3 @@ requests
 Pillow
 gunicorn
 pytesseract
-subprocess
