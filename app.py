@@ -198,35 +198,35 @@ def webhook():
                             send_message(sender_id, faq_answer)  # ถ้าเป็นคำถามใน FAQ ส่งคำตอบกลับ
                         else:
                             # กรณีมีรูปภาพ
-                        if "attachments" in messaging_event["message"]:
-                            for attachment in messaging_event["message"]["attachments"]:
-                                if attachment["type"] == "image":
-                                    image_url = attachment["payload"]["url"]
-                                    print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+                            if "attachments" in messaging_event["message"]:
+                                for attachment in messaging_event["message"]["attachments"]:
+                                    if attachment["type"] == "image":
+                                        image_url = attachment["payload"]["url"]
+                                        print(f"📷 ลูกค้าส่งภาพ: {image_url}")
 
-                                    # ดาวน์โหลดภาพจาก URL
-                                    image_path = download_image(image_url)  # ฟังก์ชันดาวน์โหลดภาพ
-                                    
-                                    # ดึงรหัสสินค้าจาก QR Code ในภาพ
-                                    product_code = extract_product_code_from_qr(image_path)
-                                    
-                                    if product_code:
-                                        # ค้นหาสินค้าจากรหัส
-                                        matched_product = get_product_by_code(product_code)
+                                        # ดาวน์โหลดภาพจาก URL
+                                        image_path = download_image(image_url)  # ฟังก์ชันดาวน์โหลดภาพ
                                         
-                                        if matched_product:
-                                            # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
-                                            product_info = (
-                                                f"ชื่อสินค้า: {matched_product['name']}\n"
-                                                f"ขนาด: {matched_product['size']}\n"
-                                                f"น้ำหนัก: {matched_product['weight']}\n"
-                                                f"ราคา: {matched_product['price']}\n"
-                                            )
-                                            send_message(sender_id, product_info)
+                                        # ดึงรหัสสินค้าจาก QR Code ในภาพ
+                                        product_code = extract_product_code_from_qr(image_path)
+                                        
+                                        if product_code:
+                                            # ค้นหาสินค้าจากรหัส
+                                            matched_product = get_product_by_code(product_code)
+                                            
+                                            if matched_product:
+                                                # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
+                                                product_info = (
+                                                    f"ชื่อสินค้า: {matched_product['name']}\n"
+                                                    f"ขนาด: {matched_product['size']}\n"
+                                                    f"น้ำหนัก: {matched_product['weight']}\n"
+                                                    f"ราคา: {matched_product['price']}\n"
+                                                )
+                                                send_message(sender_id, product_info)
+                                            else:
+                                                send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
                                         else:
-                                            send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
-                                    else:
-                                        send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
+                                            send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
 
                                     return "Message Received", 200
 
