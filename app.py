@@ -40,6 +40,15 @@ def load_products():
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
+def get_faq_answer(user_message):
+    for question, answer in faq_data.items():
+        if question in user_message:
+            return answer
+
+    # หากไม่พบคำตอบจาก FAQ, ส่งการแจ้งเตือนทาง Telegram
+    send_telegram_notification(f"❌ ไม่พบคำตอบสำหรับคำถาม: {user_message}")
+    return None  # ถ้าไม่พบคำตอบจาก FAQ
+
 # ฟังก์ชันการใช้ OCR เพื่อดึงรหัสสินค้าจากภาพ
 def extract_product_code_from_image(image_url):
     try:
@@ -199,6 +208,16 @@ def webhook():
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
         return "Error", 500
+
+if faq_answer:
+    send_message(sender_id, faq_answer)
+else:
+    send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
+
+    # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
+    if not sent_notification:
+        send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
+        sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
 
 @app.route("/", methods=["GET"])
 def home():
