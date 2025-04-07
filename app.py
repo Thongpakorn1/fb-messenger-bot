@@ -46,70 +46,79 @@ def load_products():
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
-# ฟังก์ชันการใช้ OCR เพื่อดึงรหัสสินค้าจากภาพ
-def extract_product_code_from_image(image_url):
-    try:
-        # ดาวน์โหลดภาพจาก URL
-        response = requests.get(image_url)
-        image = Image.open(BytesIO(response.content))
-        
-        # ใช้ Tesseract OCR เพื่อดึงตัวเลขจากภาพ
-        extracted_text = pytesseract.image_to_string(image, config='outputbase digits')
-        print(f"ตัวเลขที่ดึงออกจากภาพ: {extracted_text.strip()}")
-        
-        # คืนค่ารหัสสินค้า (หากพบ)
-        return extracted_text.strip()
-    except Exception as e:
-        print(f"❌ ไม่สามารถดึงตัวเลขจากภาพได้: {e}")
-        return None
-
-# ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้าและวัสดุ
-def get_product_by_code_and_material(product_code, material):
-    for product in product_list:
-        # ตรวจสอบเลขโค้ดสินค้าและวัสดุ (material)
-        if product_code == product.get('product_code') and material.lower() in product.get('material', '').lower():
-            return product
-    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้าและวัสดุ
-
-# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า
-def send_product_details_to_customer(sender_id, product):
-    if product:
-        product_info = (
-            f"ชื่อสินค้า: {product['name']}\n"
-            f"วัสดุ: {product['material']}\n"
-            f"ขนาด: {product['size']}\n"
-            f"น้ำหนัก: {product['weight']}\n"
-            f"ราคา: {product['price']}\n"
-        )
-        send_message(sender_id, product_info)  # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger
-    else:
-        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสและวัสดุที่คุณส่งมา")
-        
-# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
-def format_era_reply(product):
-    return f"ยุคสมัย: {product.get('era', 'ไม่ระบุ')}"
-
 # ฟังก์ชันที่ใช้ในการวิเคราะห์ภาพและตอบกลับ
-def analyze_image_and_respond(image_url, user_message):
-    # ดึงเลขจากภาพ
-    product_code = extract_product_code_from_image(image_url)
-    if not product_code:
-        return "ขอโทษค่ะ ไม่สามารถดึงข้อมูลจากภาพได้"
+def analyze_image_with_gpt4(image_url, material):
+    if not OPENAI_API_KEY:
+        print("❌ ไม่มี OPENAI_API_KEY")
+        return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-    # ค้นหาสินค้าที่ตรงกับเลขที่ดึงจากภาพ
-    matched_product = get_product_by_code_and_material(product_code, "ทับทิม")  # สมมติว่าเราได้วัสดุทับทิมจากการตรวจจับ
-    if not matched_product:
-        return "ขอโทษค่ะ ระบบไม่พบสินค้าที่ตรงกับเลขในภาพและวัสดุที่กำหนด"
+    # รวมรายละเอียดสินค้า
+    product_descriptions = "\n".join([
+        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท, วัสดุ: {item['material']}"
+        for item in product_list
+    ])
 
-    # กรณีลูกค้าถามราคา, ขนาด, น้ำหนัก
-    if 'ราคา' in user_message or 'รายละเอียด' in user_message:
-        return format_product_reply(matched_product)  # ส่งขนาด น้ำหนัก ราคา
-    # กรณีลูกค้าถามยุคสมัย
-    elif 'ยุค' in user_message:
-        return format_era_reply(matched_product)  # ส่งข้อมูลยุคสมัย
-    else:
-        return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ กรุณาถามใหม่อีกครั้ง"
-        
+    prompt_text = f"""
+คุณคือนักวิเคราะห์ภาพสินค้าโบราณ
+จากภาพที่ลูกค้าส่งมานี้ ช่วยเปรียบเทียบกับรายการสินค้าที่มีในระบบ โดยดูจากลักษณะต่างๆ เช่น ตัวเลขในรูป (เช่น 0000000001) วัสดุ (เช่น ทับทิม, ทอง, เงิน) และการออกแบบ (เช่น การประดับ, ลายสลัก) แล้วบอกว่าใกล้เคียงที่สุดคือสินค้ารายการไหน โดยระบุ **รหัสสินค้า** (product_code) และข้อมูลที่ชัดเจนตามนี้:
+
+วัสดุที่ต้องการ: {material}
+
+รายการสินค้า:
+{product_descriptions}
+"""
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+            }
+        ],
+        "max_tokens": 500
+    }
+
+    try:
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("❌ GPT Vision ล้มเหลว:", e)
+        return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
+
+# ฟังก์ชันส่งข้อความกลับ Messenger
+def send_message(recipient_id, message_text):
+    if not recipient_id:
+        print("\u274c recipient_id เป็น None!")
+        return
+
+    if not ACCESS_TOKEN:
+        print("\u274c ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
+        return
+
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
+    except requests.exceptions.RequestException as e:
+        print(f"\u274c ส่งข้อความล้มเหลว: {e}")        
+
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -162,30 +171,6 @@ def get_faq_answer(user_message):
     send_telegram_notification(f"❌ ไม่พบคำตอบสำหรับคำถาม: {user_message}")
     return None  # ถ้าไม่พบคำตอบจาก FAQ
 
-# ส่งข้อความกลับ Messenger
-def send_message(recipient_id, message_text):
-    if not recipient_id:
-        print("\u274c recipient_id เป็น None!")
-        return
-
-    if not ACCESS_TOKEN:
-        print("\u274c ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
-        return
-
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
-    except requests.exceptions.RequestException as e:
-        print(f"\u274c ส่งข้อความล้มเหลว: {e}")
-
 # สถานะการส่งแจ้งเตือน Telegram
 sent_notification = False  # ตัวแปรเก็บสถานะการส่งข้อความไปยัง Telegram
 
@@ -208,25 +193,10 @@ def webhook():
                                     image_url = attachment["payload"]["url"]
                                     print(f"📷 ลูกค้าส่งภาพ: {image_url}")
 
-                                    # ดึงรหัสสินค้าจากภาพ
-                                    product_code = extract_product_code_from_image(image_url)
-                                    if product_code:
-                                        # ค้นหาสินค้าจากรหัสและวัสดุ
-                                        matched_product = get_product_by_code_and_material(product_code, "ทับทิม")  # สมมติว่าเราได้วัสดุทับทิมจากการตรวจจับ
-                                        
-                                        if matched_product:
-                                            # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
-                                            product_info = (
-                                                f"ชื่อสินค้า: {matched_product['name']}\n"
-                                                f"ขนาด: {matched_product['size']}\n"
-                                                f"น้ำหนัก: {matched_product['weight']}\n"
-                                                f"ราคา: {matched_product['price']}\n"
-                                            )
-                                            send_message(sender_id, product_info)
-                                        else:
-                                            send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสและวัสดุที่คุณส่งมา")
-                                    else:
-                                        send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
+                                    # เรียกใช้ GPT-4 Vision วิเคราะห์ภาพ
+                                    material = "ทับทิม"  # ตัวอย่างวัสดุที่ได้จากคำถาม
+                                    vision_reply = analyze_image_with_gpt4(image_url, material)
+                                    send_message(sender_id, vision_reply)
 
                                     return "Message Received", 200
 
