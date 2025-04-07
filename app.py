@@ -2,7 +2,6 @@ import json
 import os
 import requests
 import base64
-import requests
 import time
 import pytesseract
 from flask import Flask, request
@@ -275,7 +274,7 @@ def webhook():
         return "Error", 500
 
 
- # ข้อความข้อความ
+    # ข้อความข้อความ
     user_message = messaging_event["message"].get("text", "").strip()
     print(f"ข้อความที่ได้รับ: {user_message}")
 
@@ -291,11 +290,6 @@ def webhook():
             sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
 
     return "Message Received", 200
-    except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
-        # แจ้งเตือนข้อผิดพลาดไปที่ Telegram
-        send_telegram_notification(f"❌ ข้อผิดพลาดในการประมวลผล webhook: {e}")
-        return "Error", 500
 
 @app.route("/", methods=["GET"])
 def home():
