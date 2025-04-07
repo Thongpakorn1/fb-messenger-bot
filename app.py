@@ -14,6 +14,15 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # ใส่ Chat ID ของ�
 ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# ตั้งค่า Tesseract path
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+# ตัวอย่างการใช้ Tesseract OCR กับภาพ
+from PIL import Image
+image = Image.open('path_to_your_image.jpg')
+text = pytesseract.image_to_string(image)
+print(text)
+
 # โหลด FAQ
 def load_faq():
     try:
