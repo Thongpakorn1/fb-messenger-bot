@@ -1,18 +1,12 @@
 # ใช้ Python 3.9-slim เป็นพื้นฐาน
 FROM python:3.9-slim
 
-# อัปเดตและติดตั้ง Tesseract OCR และ libtesseract-dev (ใช้ในการประมวลผล OCR)
+# อัปเดตและติดตั้ง Tesseract OCR, libtesseract-dev และ libzbar0 สำหรับการอ่าน QR Code
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
     libzbar0 \
     && rm -rf /var/lib/apt/lists/*  # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
-
-# สร้าง virtual environment
-RUN python3 -m venv /opt/venv
-
-# ตั้งค่าให้ใช้งาน virtual environment
-ENV PATH="/opt/venv/bin:$PATH"
 
 # กำหนดไดเรกทอรีทำงานภายใน container
 WORKDIR /app
@@ -23,11 +17,10 @@ COPY . /app
 # คัดลอกไฟล์ requirements.txt ไปยัง container
 COPY requirements.txt /app/requirements.txt
 
-# ตรวจสอบว่า pip สามารถทำงานได้หรือไม่
-RUN pip --version
-RUN pip install --upgrade pip  # อัปเกรด pip ถ้าจำเป็น
+# อัปเกรด pip ถ้าจำเป็น
+RUN pip install --upgrade pip
 
-# ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt ภายใน virtual environment
+# ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # คำสั่งที่รันเมื่อ container เริ่มทำงาน
