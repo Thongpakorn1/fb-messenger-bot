@@ -24,5 +24,8 @@ RUN pip install --upgrade pip
 # ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# ติดตั้ง gunicorn ถ้ายังไม่ติดตั้ง
+RUN pip install gunicorn
+
 # คำสั่งที่รันเมื่อ container เริ่มทำงาน
 CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]  # ใช้ gunicorn แทนการใช้ flask development server
