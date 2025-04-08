@@ -7,14 +7,14 @@ RUN apt-get update && apt-get install -y \
     libtesseract-dev \
     libzbar0 && rm -rf /var/lib/apt/lists/*
 
-# คอมเมนต์นี้ต้องแยกบรรทัด
-# ติดตั้ง libzbar0 สำหรับการอ่าน QR Code
-
 # กำหนดไดเรกทอรีทำงานภายใน container
 WORKDIR /app
 
 # คัดลอกไฟล์จากเครื่อง host ไปยัง container
 COPY . /app
+
+# คัดลอกไฟล์ requirements.txt ไปยัง container
+COPY requirements.txt /app/requirements.txt
 
 # ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
