@@ -1,18 +1,13 @@
 # ใช้ Python 3.9-slim เป็นพื้นฐาน
 FROM python:3.9-slim
 
-# อัปเดตและติดตั้ง Tesseract OCR, libtesseract-dev, libzbar0, และ build-essential
+# อัปเดตและติดตั้ง Tesseract OCR, libtesseract-dev, และ libzbar
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
     libzbar0 \
     build-essential \
     && rm -rf /var/lib/apt/lists/*  # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
-
-# ติดตั้ง zbar (ในกรณีที่ต้องการติดตั้งจากแหล่งที่มา)
-RUN apt-get update && apt-get install -y \
-    libzbar0 \
-    && rm -rf /var/lib/apt/lists/*
 
 # กำหนดไดเรกทอรีทำงานภายใน container
 WORKDIR /app
@@ -30,4 +25,4 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # คำสั่งที่รันเมื่อ container เริ่มทำงาน
-CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]  # ใช้ gunicorn แทนการใช้ flask development server
