@@ -5,7 +5,8 @@ FROM python:3.9-slim
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
-    libzbar0 && rm -rf /var/lib/apt/lists/*
+    libzbar0 \
+    && rm -rf /var/lib/apt/lists/*  # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
 
 # กำหนดไดเรกทอรีทำงานภายใน container
 WORKDIR /app
@@ -15,6 +16,10 @@ COPY . /app
 
 # คัดลอกไฟล์ requirements.txt ไปยัง container
 COPY requirements.txt /app/requirements.txt
+
+# ตรวจสอบว่า pip สามารถทำงานได้หรือไม่
+RUN pip --version
+RUN pip install --upgrade pip  # อัปเกรด pip ถ้าจำเป็น
 
 # ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
