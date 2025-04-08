@@ -1,7 +1,7 @@
 # ใช้ Python 3.9-slim เป็นพื้นฐาน
 FROM python:3.9-slim
 
-# อัปเดตและติดตั้ง Tesseract OCR, libtesseract-dev, libzbar0 และ dependencies อื่น ๆ
+# ติดตั้ง Tesseract OCR, libtesseract-dev, libzbar, และ dependencies อื่น ๆ
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
