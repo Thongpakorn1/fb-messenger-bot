@@ -5,11 +5,14 @@ FROM python:3.9-slim
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
-    libzbar0 \      # กลับมาใช้ libzbar0 สำหรับ shared library
-    libzbar-dev \  # ยังคง libzbar-dev ไว้สำหรับการ build pyzbar
+    libzbar0 \
+    libzbar-dev \
     build-essential \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
+
+# ค้นหาตำแหน่ง libzbar.so (เพื่อ debug)
+RUN find / -name libzbar.so
 
 # กำหนดไดเรกทอรีทำงานภายใน container
 WORKDIR /app
@@ -23,8 +26,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # คัดลอกไฟล์จากเครื่อง host ไปยัง container
 COPY . /app
 
-# ตั้งค่า LD_LIBRARY_PATH เพื่อให้ระบบค้นหา shared library ของ zbar ได้
-ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/usr/lib/x86_64-linux-gnu
+# Copy shared library (อาจต้องปรับ path ตามผลลัพธ์ของ find)
+RUN cp /usr/lib/x86_64-linux-gnu/libzbar.so.0 /usr/lib/libzbar.so.0
+RUN ldconfig # อัปเดต shared library cache
 
 # คำสั่งที่รันเมื่อ container เริ่มทำงาน
 CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]
