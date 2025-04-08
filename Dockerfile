@@ -5,8 +5,9 @@ FROM python:3.9-slim
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
-    libzbar0 \
+    libzbar-dev \  # สำคัญ: ติดตั้ง development files สำหรับ zbar
     build-essential \
+    pkg-config \    # อาจจำเป็นสำหรับการหา zbar library
     && rm -rf /var/lib/apt/lists/* # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
 
 # กำหนดไดเรกทอรีทำงานภายใน container
