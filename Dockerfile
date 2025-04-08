@@ -8,6 +8,12 @@ RUN apt-get update && apt-get install -y \
     libzbar0 \
     && rm -rf /var/lib/apt/lists/*  # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
 
+# สร้าง virtual environment
+RUN python3 -m venv /opt/venv
+
+# ตั้งค่าให้ใช้งาน virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+
 # กำหนดไดเรกทอรีทำงานภายใน container
 WORKDIR /app
 
@@ -21,7 +27,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip --version
 RUN pip install --upgrade pip  # อัปเกรด pip ถ้าจำเป็น
 
-# ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt
+# ติดตั้ง dependencies ของโปรเจกต์จาก requirements.txt ภายใน virtual environment
 RUN pip install --no-cache-dir -r requirements.txt
 
 # คำสั่งที่รันเมื่อ container เริ่มทำงาน
