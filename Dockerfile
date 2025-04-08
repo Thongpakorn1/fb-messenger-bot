@@ -1,11 +1,12 @@
 # ใช้ Python 3.9-slim เป็นพื้นฐาน
 FROM python:3.9-slim
 
-# อัปเดตและติดตั้ง Tesseract OCR, libtesseract-dev และ libzbar0 สำหรับการอ่าน QR Code
+# อัปเดตและติดตั้ง Tesseract OCR, libtesseract-dev, และ libzbar
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
     libzbar0 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*  # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
 
 # กำหนดไดเรกทอรีทำงานภายใน container
