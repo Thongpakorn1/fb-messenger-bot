@@ -2,23 +2,18 @@ import json
 import os
 import requests
 import base64
+import requests
 import time
 import pytesseract
-import subprocess
 from flask import Flask, request
 from io import BytesIO
 from PIL import Image
-from pyzbar.pyzbar import decode
-
 app = Flask(__name__)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # ใส่ Bot Token ของคุณ
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # ใส่ Chat ID ของคุณ
 ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# ตั้งค่า Tesseract path
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # โหลด FAQ
 def load_faq():
@@ -37,102 +32,118 @@ def load_products():
         with open("products.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"❌ โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
+        print(f"\u274c โหลดข้อมูลสินค้าไม่สำเร็จ: {e}")
         return []
 
 product_list = load_products()
 print(f"📦 โหลดสินค้าทั้งหมด {len(product_list)} รายการ")
 
-# ฟังก์ชันดาวน์โหลดภาพจาก URL
-def download_image(image_url):
-    try:
-        # ดาวน์โหลดภาพจาก URL
-        response = requests.get(image_url)
-        response.raise_for_status()  # ตรวจสอบว่าได้รับการตอบกลับสำเร็จ
-        image_path = "downloaded_image.jpg"  # ตั้งชื่อไฟล์ที่ดาวน์โหลด
-        with open(image_path, 'wb') as f:
-            f.write(response.content)  # เขียนข้อมูลภาพลงในไฟล์
-        return image_path  # คืนค่าพาธของไฟล์ที่ดาวน์โหลด
-    except Exception as e:
-        print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL: {e}")
-        return None
+# เปรียบเทียบ URL ของภาพ
+def compare_image_url(image_url):
+    for product in product_list:
+        if image_url == product['image']:  # เปรียบเทียบ URL ของภาพ
+            return product
+    return None  # ถ้าไม่พบสินค้าที่ตรงกัน
 
-# ฟังก์ชันอ่าน QR Code จากภาพ
-def read_qr_code(image_path):
+# ฟังก์ชันการใช้ OCR เพื่อดึงรหัสสินค้าจากภาพ
+def extract_number_from_image(image_url):
     try:
-        # เปิดภาพ
-        image = Image.open(image_path)
-        
-        # ใช้ pyzbar เพื่ออ่าน QR Code
-        decoded_objects = decode(image)
-        for obj in decoded_objects:
-            # คืนค่าข้อมูลจาก QR Code
-            qr_data = obj.data.decode('utf-8')
-            print(f"ข้อมูลจาก QR Code: {qr_data}")
-            return qr_data  # คืนค่ารหัสสินค้า
+        response = requests.get(image_url)
+        image = Image.open(BytesIO(response.content))
+        # ใช้ Tesseract OCR เพื่อดึงตัวเลขจากภาพ
+        extracted_text = pytesseract.image_to_string(image, config='outputbase digits')
+        print(f"ตัวเลขที่ดึงออกจากภาพ: {extracted_text.strip()}")
+        return extracted_text.strip()  # ลบช่องว่างที่ไม่จำเป็น
     except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาดในการอ่าน QR Code: {e}")
+        print(f"❌ ไม่สามารถดึงตัวเลขจากภาพได้: {e}")
         return None
 
 # ฟังก์ชันการค้นหาสินค้าจากรหัสสินค้า
 def get_product_by_code(product_code):
     for product in product_list:
-        if product_code == product.get('product_code'):
+        if product_code == product.get('product_code'):  # เปรียบเทียบรหัสสินค้า
             return product
-    return None  # หากไม่พบสินค้าที่ตรงกับรหัสสินค้า
+    return None  # ถ้าไม่พบข้อมูลที่ตรงกัน
 
-# ฟังก์ชันแสดงข้อมูลสินค้ากลับไปยังลูกค้า
-def send_product_details_to_customer(sender_id, product):
-    if product:
-        product_info = (
-            f"ชื่อสินค้า: {product['name']}\n"
-            f"วัสดุ: {product['material']}\n"
-            f"ขนาด: {product['size']}\n"
-            f"น้ำหนัก: {product['weight']}\n"
-            f"ราคา: {product['price']}\n"
-        )
-        send_message(sender_id, product_info)  # ส่งข้อความให้ลูกค้าผ่าน Facebook Messenger
-    else:
-        send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
+# ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลสินค้า
+def format_product_reply(product):
+    product_link = product.get('url', 'ไม่มีลิงก์')  # ใช้ url จาก products.json หรือค่าที่กำหนด
+    return (
+        f"ชื่อสินค้า: {product['name']}\n"
+        f"ขนาด: {product.get('size', 'ไม่ระบุ')}\n"
+        f"น้ำหนัก: {product.get('weight', 'ไม่ระบุ')}\n"
+        f"รายละเอียดสินค้า: {product_link}"
+    )
 
 # ฟังก์ชันจัดรูปแบบการตอบกลับข้อมูลยุคสมัย
 def format_era_reply(product):
     return f"ยุคสมัย: {product.get('era', 'ไม่ระบุ')}"
 
-# ฟังก์ชันส่งข้อความกลับ Messenger
-def send_message(recipient_id, message_text):
-    ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")  # ใส่ Access Token ของคุณ
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        print(f"✅ ส่งข้อความสำเร็จ: {message_text}")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ ส่งข้อความล้มเหลว: {e}")
-
 # ฟังก์ชันที่ใช้ในการวิเคราะห์ภาพและตอบกลับ
-def analyze_image_with_gpt4(image_url, material):
+def analyze_image_and_respond(image_url, user_message):
+    # ดึงเลขจากภาพ
+    product_code = extract_number_from_image(image_url)
+    if not product_code:
+        return "ขอโทษค่ะ ไม่สามารถดึงข้อมูลจากภาพได้"
+
+    # ค้นหาสินค้าที่ตรงกับเลขที่ดึงจากภาพ
+    matched_product = get_product_by_code(product_code)
+    if not matched_product:
+        return "ขอโทษค่ะ ระบบไม่พบสินค้าที่ตรงกับเลขในภาพ"
+
+    # กรณีลูกค้าถามราคา, ขนาด, น้ำหนัก
+    if 'ราคา' in user_message or 'รายละเอียด' in user_message:
+        return format_product_reply(matched_product)  # ส่งขนาด น้ำหนัก ราคา
+    # กรณีลูกค้าถามยุคสมัย
+    elif 'ยุค' in user_message:
+        return format_era_reply(matched_product)  # ส่งข้อมูลยุคสมัย
+    else:
+        return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ กรุณาถามใหม่อีกครั้ง"
+        
+# ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
+def send_telegram_notification(message):
+    telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
+    }
+    try:
+        response = requests.post(telegram_url, data=payload)
+        response.raise_for_status()
+        print("✅ ส่งข้อความแจ้งเตือนทาง Telegram สำเร็จ")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
+
+# ฟังก์ชันดาวน์โหลดภาพจาก URL และแปลงเป็น base64
+def image_to_base64(image_url):
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # ตรวจสอบสถานะการดาวน์โหลด
+        image = Image.open(BytesIO(response.content))  # เปิดภาพจาก BytesIO
+        buffered = BytesIO()
+        image.save(buffered, format="PNG")  # แปลงเป็น PNG หรือไฟล์ประเภทอื่น
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return img_str
+    except Exception as e:
+        print(f"❌ ไม่สามารถดาวน์โหลดภาพจาก URL หรือแปลงเป็น base64: {e}")
+        return None
+
+# วิเคราะห์ภาพด้วย GPT-4o Vision
+
+def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
     # รวมรายละเอียดสินค้า
-    product_descriptions = "\n".join([ 
-        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท, วัสดุ: {item['material']}"
+    product_descriptions = "\n".join([
+        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
         for item in product_list
     ])
 
     prompt_text = f"""
 คุณคือนักวิเคราะห์ภาพสินค้าโบราณ
-จากภาพที่ลูกค้าส่งมานี้ ช่วยเปรียบเทียบกับรายการสินค้าที่มีในระบบ โดยดูจากลักษณะต่างๆ เช่น ตัวเลขในรูป (เช่น 0000000001) วัสดุ (เช่น ทับทิม, ทอง, เงิน) และการออกแบบ (เช่น การประดับ, ลายสลัก) แล้วบอกว่าใกล้เคียงที่สุดคือสินค้ารายการไหน โดยระบุ **รหัสสินค้า** (product_code) และข้อมูลที่ชัดเจนตามนี้:
-
-วัสดุที่ต้องการ: {material}
+จากภาพด้านล่าง ช่วยเปรียบเทียบกับรายการสินค้าที่มีอยู่ในระบบ แล้วบอกว่าใกล้เคียงกับรายการใดมากที่สุด พร้อมแจ้งขนาด น้ำหนัก และราคา:
 
 รายการสินค้า:
 {product_descriptions}
@@ -165,13 +176,6 @@ def analyze_image_with_gpt4(image_url, material):
         print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
-# ฟังก์ชันในการตอบคำถาม FAQ
-def get_faq_answer(user_message):
-    for question, answer in faq_data.items():
-        if question in user_message:
-            return answer
-    return None  # ถ้าไม่พบคำตอบจาก FAQ
-
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -186,59 +190,89 @@ def send_telegram_notification(message):
     except requests.exceptions.RequestException as e:
         print(f"❌ ส่งข้อความแจ้งเตือนไปยัง Telegram ล้มเหลว: {e}")
 
+# ฟังก์ชันในการตอบคำถาม FAQ
+def get_faq_answer(user_message):
+    for question, answer in faq_data.items():
+        if question in user_message:
+            return answer
+
+    # หากไม่พบคำตอบจาก FAQ, ส่งการแจ้งเตือนทาง Telegram
+    send_telegram_notification(f"❌ ไม่พบคำตอบสำหรับคำถาม: {user_message}")
+    return None  # ถ้าไม่พบคำตอบจาก FAQ
+
+# ส่งข้อความกลับ Messenger
+def send_message(recipient_id, message_text):
+    if not recipient_id:
+        print("\u274c recipient_id เป็น None!")
+        return
+
+    if not ACCESS_TOKEN:
+        print("\u274c ACCESS_TOKEN ยังไม่ได้ตั้งค่า!")
+        return
+
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={ACCESS_TOKEN}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        print(f"\u2705 ส่งข้อความสำเร็จ: {message_text}")
+    except requests.exceptions.RequestException as e:
+        print(f"\u274c ส่งข้อความล้มเหลว: {e}")
+
+# สถานะการส่งแจ้งเตือน Telegram
+sent_notification = False  # ตัวแปรเก็บสถานะการส่งข้อความไปยัง Telegram
+
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    global sent_notification  # ใช้ตัวแปร global เพื่อให้สามารถเปลี่ยนค่าได้
+
     data = request.get_json()
     try:
+        data = request.get_json()
         if data.get("object") == "page":
             for entry in data.get("entry", []):
                 for messaging_event in entry.get("messaging", []):
                     sender_id = messaging_event["sender"]["id"]
                     if "message" in messaging_event:
-                        # ตรวจสอบข้อความที่ได้รับจากผู้ใช้
+                        # กรณีมีรูปภาพ
+                        if "attachments" in messaging_event["message"]:
+                            for attachment in messaging_event["message"]["attachments"]:
+                                if attachment["type"] == "image":
+                                    image_url = attachment["payload"]["url"]
+                                    print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+                                    # ส่งภาพไปให้ GPT-4o วิเคราะห์
+                                    vision_reply = analyze_image_with_gpt4(image_url)
+                                    send_message(sender_id, vision_reply)
+                                    return "Message Received", 200
+
+                        # ข้อความข้อความ
                         user_message = messaging_event["message"].get("text", "").strip()
                         print(f"ข้อความที่ได้รับ: {user_message}")
 
-                        # ตรวจสอบคำถาม FAQ
                         faq_answer = get_faq_answer(user_message)
                         if faq_answer:
-                            send_message(sender_id, faq_answer)  # ถ้าเป็นคำถามใน FAQ ส่งคำตอบกลับ
+                            send_message(sender_id, faq_answer)
                         else:
-                            # กรณีมีรูปภาพ
-                            if "attachments" in messaging_event["message"]:
-                                for attachment in messaging_event["message"]["attachments"]:
-                                    if attachment["type"] == "image":
-                                        image_url = attachment["payload"]["url"]
-                                        print(f"📷 ลูกค้าส่งภาพ: {image_url}")
+                            send_message(sender_id, "❌ ขอโทษค่ะ ระบบไม่พบข้อมูล กรุณารอสักครู่เพื่อให้เจ้าหน้าที่ติดต่อกลับ")
 
-                                        # ดาวน์โหลดภาพจาก URL
-                                        image_path = download_image(image_url)  # ฟังก์ชันดาวน์โหลดภาพ
-                                        
-                                        if image_path:
-                                            # ดึงรหัสสินค้าจาก QR Code ในภาพ
-                                            product_code = read_qr_code(image_path)
-                                            
-                                            if product_code:
-                                                # ค้นหาสินค้าจากรหัส
-                                                matched_product = get_product_by_code(product_code)
-                                                
-                                                if matched_product:
-                                                    # ส่งข้อมูลสินค้ากลับไปให้ลูกค้า
-                                                    send_product_details_to_customer(sender_id, matched_product)
-                                                else:
-                                                    send_message(sender_id, "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับรหัสที่คุณส่งมา")
-                                            else:
-                                                send_message(sender_id, "ขอโทษค่ะ ไม่สามารถดึงรหัสสินค้าได้จากภาพ")
-
-                                    return "Message Received", 200
+                            # ส่งแจ้งเตือนที่ Telegram เพียงครั้งเดียว
+                            if not sent_notification:
+                                send_telegram_notification(f"ลูกค้าส่งข้อความ: {user_message}")
+                                sent_notification = True  # ตั้งค่าให้ส่งแจ้งเตือนแล้ว
 
         return "Message Received", 200
-        
+
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาดในการประมวลผล webhook: {e}")
+        # แจ้งเตือนข้อผิดพลาดไปที่ Telegram
+        send_telegram_notification(f"❌ ข้อผิดพลาดในการประมวลผล webhook: {e}")
         return "Error", 500
-
 
 @app.route("/", methods=["GET"])
 def home():
