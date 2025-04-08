@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libtesseract-dev \
     libzbar0 \
+    libzbar-dev \  # เพิ่ม libzbar-dev เพื่อให้ pyzbar ใช้งานได้
     build-essential \
     && rm -rf /var/lib/apt/lists/*  # ลบ cache หลังติดตั้งเพื่อประหยัดพื้นที่
 
