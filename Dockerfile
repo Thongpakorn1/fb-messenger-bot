@@ -25,4 +25,4 @@ RUN pip install --upgrade pip  # อัปเกรด pip ถ้าจำเป
 RUN pip install --no-cache-dir -r requirements.txt
 
 # คำสั่งที่รันเมื่อ container เริ่มทำงาน
-CMD ["python", "app.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]  # ใช้ gunicorn แทนการใช้ flask development server
