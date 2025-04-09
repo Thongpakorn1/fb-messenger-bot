@@ -2,7 +2,6 @@ import json
 import os
 import requests
 import base64
-import requests
 import time
 import pytesseract
 from flask import Flask, request
@@ -99,7 +98,7 @@ def analyze_image_and_respond(image_url, user_message):
         return format_era_reply(matched_product)  # ส่งข้อมูลยุคสมัย
     else:
         return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ กรุณาถามใหม่อีกครั้ง"
-        
+
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -149,7 +148,7 @@ def analyze_image_with_gpt4(image_url):
 ตอบกลับด้วยชื่อสินค้าเท่านั้น หากไม่พบสินค้าที่ตรงกันหรือใกล้เคียง ให้ตอบว่า "ไม่พบสินค้า"
 """
 
-print("--- Prompt ที่ส่งไปยัง GPT-4o ---")
+    print("--- Prompt ที่ส่งไปยัง GPT-4o ---")
     print(prompt_text)
     print("--- สิ้นสุด Prompt ---")
 
