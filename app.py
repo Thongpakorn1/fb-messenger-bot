@@ -2,6 +2,7 @@ import json
 import os
 import requests
 import base64
+import requests
 import time
 import pytesseract
 from flask import Flask, request
@@ -98,7 +99,7 @@ def analyze_image_and_respond(image_url, user_message):
         return format_era_reply(matched_product)  # ส่งข้อมูลยุคสมัย
     else:
         return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ กรุณาถามใหม่อีกครั้ง"
-
+        
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -128,6 +129,7 @@ def image_to_base64(image_url):
         return None
 
 # วิเคราะห์ภาพด้วย GPT-4o Vision
+
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
@@ -135,7 +137,7 @@ def analyze_image_with_gpt4(image_url):
 
     # รวมรายละเอียดสินค้า
     product_descriptions = "\n".join([
-        f"{item['name']} - ขนาด: {item.get('size', 'ไม่ระบุ')}, น้ำหนัก: {item.get('weight', 'ไม่ระบุ')} กรัม, ราคา: {item.get('price', 'ไม่ระบุ')} บาทค่ะ"
+        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
         for item in product_list
     ])
 
@@ -145,13 +147,7 @@ def analyze_image_with_gpt4(image_url):
 
 รายการสินค้า:
 {product_descriptions}
-
-**สำคัญ:** ตอบกลับตามรูปแบบ "[ชื่อสินค้า] - ขนาด: [ขนาด], น้ำหนัก: [น้ำหนัก] กรัม, ราคา: [ราคา] บาทค่ะ" หรือ "ไม่พบสินค้าที่ตรงกันในระบบค่ะ"
 """
-
-    print("--- Prompt ที่ส่งไปยัง GPT-4o ---")
-    print(prompt_text)
-    print("--- สิ้นสุด Prompt ---")
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -169,17 +165,13 @@ def analyze_image_with_gpt4(image_url):
                 ]
             }
         ],
-        "max_tokens": 300
+        "max_tokens": 500
     }
 
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
-        gpt_response_json = response.json()
-        print("--- คำตอบ JSON จาก GPT-4o ---")
-        print(gpt_response_json)
-        gpt_reply = gpt_response_json["choices"][0]["message"]["content"].strip()
-        return gpt_reply
+        return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
