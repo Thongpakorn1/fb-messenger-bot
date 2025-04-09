@@ -142,12 +142,18 @@ def analyze_image_with_gpt4(image_url):
     ])
 
     prompt_text = f"""
-คุณคือนักวิเคราะห์ภาพสินค้าโบราณ
-จากภาพด้านล่าง ช่วยเปรียบเทียบกับรายการสินค้าที่มีอยู่ในระบบ แล้วบอกว่าใกล้เคียงกับรายการใดมากที่สุด พร้อมแจ้งขนาด น้ำหนัก และราคา:
+    คุณคือนักวิเคราะห์ภาพสินค้าโบราณ
+    จากภาพด้านล่าง ช่วยเปรียบเทียบกับรายการสินค้าที่มีอยู่ในระบบ แล้วบอกว่าสินค้าใดใกล้เคียงที่สุด พร้อมแจ้งขนาด น้ำหนัก และราคา หากระบุได้จากภาพหรือความเชื่อมโยงกับชื่อสินค้า:
 
-รายการสินค้า:
-{product_descriptions}
-"""
+    รายการสินค้า:
+    {product_descriptions}
+
+    **สำคัญ:** ตอบกลับในรูปแบบ "[ชื่อสินค้า]: ขนาด [ขนาด], น้ำหนัก [น้ำหนัก] กรัม, ราคา [ราคา] บาท" หากไม่พบสินค้าที่ตรงกัน ให้ตอบว่า "ไม่พบสินค้าที่ตรงกันในระบบค่ะ" หากไม่สามารถระบุขนาด น้ำหนัก หรือราคา ให้ระบุว่า 'ไม่ระบุ' ในส่วนนั้น
+    """
+
+    print("--- Prompt ที่ส่งไปยัง GPT-4o ---")
+    print(prompt_text)
+    print("--- สิ้นสุด Prompt ---")
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -165,17 +171,21 @@ def analyze_image_with_gpt4(image_url):
                 ]
             }
         ],
-        "max_tokens": 500
+        "max_tokens": 150
     }
 
     try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
+        gpt_response_json = response.json()
+        print("--- คำตอบ JSON จาก GPT-4o ---")
+        print(gpt_response_json)
+        gpt_reply = gpt_response_json["choices"][0]["message"]["content"].strip()
+        return gpt_reply
     except Exception as e:
         print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
-
+        
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
