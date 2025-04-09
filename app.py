@@ -172,7 +172,7 @@ def analyze_image_with_gpt4(image_url):
                 ]
             }
         ],
-        "max_tokens": 100
+        "max_tokens": 500
     }
 
     try:
