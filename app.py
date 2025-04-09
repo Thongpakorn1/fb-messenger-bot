@@ -134,7 +134,7 @@ def analyze_image_with_gpt4(image_url):
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-     # รวมรายละเอียดสินค้าพร้อมขนาด น้ำหนัก และราคา
+    # รวมรายละเอียดสินค้าพร้อมขนาด น้ำหนัก และราคา
     product_descriptions = "\n".join([
         f"{item['name']} - ขนาด: {item.get('size', 'ไม่ระบุ')}, น้ำหนัก: {item.get('weight', 'ไม่ระบุ')} กรัม, ราคา: {item.get('price', 'ไม่ระบุ')} บาทค่ะ"
         for item in product_list
@@ -142,7 +142,7 @@ def analyze_image_with_gpt4(image_url):
 
     # ปรับ Prompt ใหม่เพื่อให้ระบุแค่ ขนาด, น้ำหนัก, ราคา
     prompt_text = f"""
-    คุณคือนักวิเคราะห์ภาพสินค้าโบราณที่มีความแม่นยำสูง มีความมั่นใจและสุภาพ
+    คุณคือนักวิเคราะห์ภาพสินค้าโบราณที่มีความแม่นยำสูงและสุภาพ
     จากภาพสินค้านี้ ช่วยวิเคราะห์ **ชื่อ, ขนาด, น้ำหนัก, ราคา** ของสินค้าจากข้อมูลด้านล่าง:
     {product_descriptions}
     โดยไม่ต้องให้ข้อมูลอื่น ๆ เช่น วัสดุ การออกแบบ หรือข้อมูลที่ไม่เกี่ยวข้องกับสิ่งที่ต้องการ
@@ -178,9 +178,18 @@ def analyze_image_with_gpt4(image_url):
         print("--- คำตอบ JSON จาก GPT-4o ---")
         print(gpt_response_json)
         gpt_reply = gpt_response_json["choices"][0]["message"]["content"].strip()
+
+        # ถ้าไม่พบข้อมูลหรือคำตอบไม่มีการจับคู่ที่ชัดเจน
+        if "ไม่พบสินค้าที่ตรงกัน" in gpt_reply or not gpt_reply:
+            # ส่งข้อความแจ้งเตือนไปยัง Telegram ของคุณ
+            send_telegram_notification(f"❌ ไม่พบสินค้าที่ตรงกันในระบบสำหรับภาพ: {image_url}")
+            return "ขอโทษค่ะ ไม่สามารถระบุสินค้าที่ตรงกับภาพได้"
+
         return gpt_reply
     except Exception as e:
         print("❌ GPT Vision ล้มเหลว:", e)
+        # ส่งข้อความแจ้งเตือนไปยัง Telegram ของคุณหากเกิดข้อผิดพลาด
+        send_telegram_notification(f"❌ เกิดข้อผิดพลาดในการประมวลผลภาพ: {e}")
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
