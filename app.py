@@ -169,7 +169,7 @@ print("--- Prompt ที่ส่งไปยัง GPT-4o ---")
                 ]
             }
         ],
-        "max_tokens": 500
+        "max_tokens": 100
     }
 
     try:
