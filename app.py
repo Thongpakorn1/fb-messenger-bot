@@ -133,9 +133,9 @@ def analyze_image_with_gpt4(image_url):
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-     # รวมรายละเอียดสินค้า
+    # รวมรายละเอียดสินค้า
     product_descriptions = "\n".join([
-        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
+        f"{item['name']} - ขนาด: {item.get('size', 'ไม่ระบุ')}, น้ำหนัก: {item.get('weight', 'ไม่ระบุ')} กรัม, ราคา: {item.get('price', 'ไม่ระบุ')} บาทค่ะ"
         for item in product_list
     ])
 
@@ -145,9 +145,8 @@ def analyze_image_with_gpt4(image_url):
 
 รายการสินค้า:
 {product_descriptions}
-"""
 
-**สำคัญ:** ตอบกลับตามรูปแบบที่กำหนดเท่านั้น หรือ "ไม่พบสินค้าที่ตรงกันในระบบค่ะ"
+**สำคัญ:** ตอบกลับตามรูปแบบ "[ชื่อสินค้า] - ขนาด: [ขนาด], น้ำหนัก: [น้ำหนัก] กรัม, ราคา: [ราคา] บาทค่ะ" หรือ "ไม่พบสินค้าที่ตรงกันในระบบค่ะ"
 """
 
     print("--- Prompt ที่ส่งไปยัง GPT-4o ---")
