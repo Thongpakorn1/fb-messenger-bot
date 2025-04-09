@@ -2,7 +2,6 @@ import json
 import os
 import requests
 import base64
-import requests
 import time
 import pytesseract
 from flask import Flask, request
@@ -99,7 +98,7 @@ def analyze_image_and_respond(image_url, user_message):
         return format_era_reply(matched_product)  # ส่งข้อมูลยุคสมัย
     else:
         return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ กรุณาถามใหม่อีกครั้ง"
-        
+
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -129,25 +128,25 @@ def image_to_base64(image_url):
         return None
 
 # วิเคราะห์ภาพด้วย GPT-4o Vision
-
 def analyze_image_with_gpt4(image_url):
     if not OPENAI_API_KEY:
         print("❌ ไม่มี OPENAI_API_KEY")
         return "ขอโทษค่ะ ระบบยังไม่สามารถวิเคราะห์ภาพได้ในขณะนี้"
 
-    # รวมรายละเอียดสินค้า
+    # รวมรายละเอียดสินค้าพร้อมลักษณะเด่น
     product_descriptions = "\n".join([
-        f"{item['name']} - ขนาด: {item['size']}, น้ำหนัก: {item['weight']}, ราคา: {item['price']} บาท"
+        f"{item['name']} (ลักษณะเด่น: {item.get('key_features', 'ไม่ระบุ')}) - ขนาด: {item.get('size', 'ไม่ระบุ')}, น้ำหนัก: {item.get('weight', 'ไม่ระบุ')} กรัม, ราคา: {item.get('price', 'ไม่ระบุ')} บาท"
         for item in product_list
     ])
 
     prompt_text = f"""
     คุณคือนักวิเคราะห์ภาพสินค้าโบราณที่มีความแม่นยำสูง
-    จากภาพด้านล่าง ช่วยวิเคราะห์และเปรียบเทียบกับรายการสินค้า โดยตอบกลับสั้นๆ ในรูปแบบต่อไปนี้เท่านั้น:
+    จากภาพด้านล่าง ช่วยวิเคราะห์ **ลักษณะเด่น, รูปทรง, ลวดลายหลัก, และสี** อย่างละเอียด จากนั้นเปรียบเทียบกับรายการสินค้าที่มีอยู่ในระบบ โดยพิจารณาจาก **ลักษณะเด่น (key_features)** ที่ระบุไว้ หากพบสินค้าที่ใกล้เคียงที่สุด ให้ตอบกลับตามรูปแบบตัวอย่างนี้เท่านั้น:
 
+    **ตัวอย่างการตอบกลับ:**
     [ชื่อสินค้า]: ขนาด [ขนาด], น้ำหนัก [น้ำหนัก] กรัม, ราคา [ราคา] บาท
 
-    หากไม่พบสินค้าที่ตรงกัน ให้ตอบว่า "ไม่พบสินค้าที่ตรงกันในระบบค่ะ" หากไม่สามารถระบุขนาด น้ำหนัก หรือราคา ให้ระบุว่า 'ไม่ระบุ'
+    หากไม่พบสินค้าที่ตรงกัน ให้ตอบว่า "ไม่พบสินค้าที่ตรงกันในระบบค่ะ" หากไม่สามารถระบุขนาด น้ำหนัก หรือราคา ให้ระบุว่า 'ไม่ระบุ' ในส่วนนั้น
 
     รายการสินค้า:
     {product_descriptions}
@@ -176,7 +175,7 @@ def analyze_image_with_gpt4(image_url):
         "max_tokens": 100
     }
 
-     try:
+    try:
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
         gpt_response_json = response.json()
@@ -187,7 +186,7 @@ def analyze_image_with_gpt4(image_url):
     except Exception as e:
         print("❌ GPT Vision ล้มเหลว:", e)
         return "ขอโทษค่ะ ระบบวิเคราะห์ภาพผิดพลาด"
-        
+
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
     telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -246,7 +245,6 @@ def webhook():
 
     data = request.get_json()
     try:
-        data = request.get_json()
         if data.get("object") == "page":
             for entry in data.get("entry", []):
                 for messaging_event in entry.get("messaging", []):
