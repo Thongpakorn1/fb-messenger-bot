@@ -79,26 +79,22 @@ def format_product_reply(product):
 def format_era_reply(product):
     return f"ยุคสมัย: {product.get('era', 'ไม่ระบุ')}"
 
-# ฟังก์ชันที่ใช้ในการวิเคราะห์ภาพและตอบกลับ
+# ฟังก์ชันวิเคราะห์ภาพและตรวจสอบการจับคู่
 def analyze_image_and_respond(image_url, user_message):
-    # ดึงเลขจากภาพ
-    product_code = extract_number_from_image(image_url)
-    if not product_code:
-        return "ขอโทษค่ะ ไม่สามารถดึงข้อมูลจากภาพได้"
+    # ส่งภาพไปให้ GPT วิเคราะห์
+    vision_reply = analyze_image_with_gpt4(image_url)
+    
+    # ตรวจสอบการจับคู่ของ GPT
+    if "แหวนเงินกระเปาะทองทับทิมขางู" in vision_reply:
+        # ส่งแจ้งเตือน Telegram ถ้าจับคู่ผิด
+        send_telegram_notification(f"❌ ไม่พบสินค้าที่ตรงกันจากภาพนี้: {image_url}")
+        return "ขอโทษค่ะ ไม่พบสินค้าที่ตรงกับภาพนี้"
 
-    # ค้นหาสินค้าที่ตรงกับเลขที่ดึงจากภาพ
-    matched_product = get_product_by_code(product_code)
-    if not matched_product:
-        return "ขอโทษค่ะ ระบบไม่พบสินค้าที่ตรงกับเลขในภาพ"
+    # ถ้าจับคู่ถูกต้องให้ส่งข้อมูล
+    if "ชื่อ" in vision_reply and "ขนาด" in vision_reply and "น้ำหนัก" in vision_reply:
+        return vision_reply
 
-    # กรณีลูกค้าถามราคา, ขนาด, น้ำหนัก
-    if 'ราคา' in user_message or 'รายละเอียด' in user_message:
-        return format_product_reply(matched_product)  # ส่งขนาด น้ำหนัก ราคา
-    # กรณีลูกค้าถามยุคสมัย
-    elif 'ยุค' in user_message:
-        return format_era_reply(matched_product)  # ส่งข้อมูลยุคสมัย
-    else:
-        return "ขอโทษค่ะ ระบบไม่สามารถตอบคำถามได้ กรุณาถามใหม่อีกครั้ง"
+    return "ขอโทษค่ะ ไม่สามารถระบุสินค้าที่ตรงกับภาพได้"
 
 # ฟังก์ชันสำหรับส่งข้อความแจ้งเตือนไปยัง Telegram
 def send_telegram_notification(message):
